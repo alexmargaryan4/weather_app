@@ -1,25 +1,62 @@
 class WeatherData {
   final String cityName;
+  final double lat;
+  final double lon;
   final double temp;
   final double feelsLike;
   final String description;
   final String iconCode;
   final double windSpeed;
   final int humidity;
+  final int pressure;
+  final int visibility;
+  final DateTime sunrise;
+  final DateTime sunset;
   final List<HourlyForecast> hourly;
   final List<DailyForecast> daily;
+  // Индекс качества воздуха (1 = отлично ... 5 = очень плохо), null пока не загружен
+  final int? airQualityIndex;
 
   WeatherData({
     required this.cityName,
+    required this.lat,
+    required this.lon,
     required this.temp,
     required this.feelsLike,
     required this.description,
     required this.iconCode,
     required this.windSpeed,
     required this.humidity,
+    required this.pressure,
+    required this.visibility,
+    required this.sunrise,
+    required this.sunset,
     required this.hourly,
     required this.daily,
+    this.airQualityIndex,
   });
+
+  // Возвращает копию с обновлённым индексом качества воздуха
+  WeatherData copyWithAirQuality(int? aqi) {
+    return WeatherData(
+      cityName: cityName,
+      lat: lat,
+      lon: lon,
+      temp: temp,
+      feelsLike: feelsLike,
+      description: description,
+      iconCode: iconCode,
+      windSpeed: windSpeed,
+      humidity: humidity,
+      pressure: pressure,
+      visibility: visibility,
+      sunrise: sunrise,
+      sunset: sunset,
+      hourly: hourly,
+      daily: daily,
+      airQualityIndex: aqi,
+    );
+  }
 
   factory WeatherData.fromJson(
     Map<String, dynamic> currentJson,
@@ -67,12 +104,20 @@ class WeatherData {
 
     return WeatherData(
       cityName: currentJson['name'],
+      lat: (currentJson['coord']['lat'] as num).toDouble(),
+      lon: (currentJson['coord']['lon'] as num).toDouble(),
       temp: (currentJson['main']['temp'] as num).toDouble(),
       feelsLike: (currentJson['main']['feels_like'] as num).toDouble(),
       description: currentJson['weather'][0]['description'],
       iconCode: currentJson['weather'][0]['icon'],
       windSpeed: (currentJson['wind']['speed'] as num).toDouble(),
       humidity: currentJson['main']['humidity'],
+      pressure: currentJson['main']['pressure'] ?? 1013,
+      visibility: currentJson['visibility'] ?? 10000,
+      sunrise: DateTime.fromMillisecondsSinceEpoch(
+          ((currentJson['sys']?['sunrise'] ?? 0) as int) * 1000),
+      sunset: DateTime.fromMillisecondsSinceEpoch(
+          ((currentJson['sys']?['sunset'] ?? 0) as int) * 1000),
       hourly: hourlyList,
       daily: dailyList,
     );
