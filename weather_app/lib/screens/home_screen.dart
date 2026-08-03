@@ -303,32 +303,16 @@ class _HomeScreenState extends State<HomeScreen> {
             HourlyForecastList(
                 hourly: weather.hourly, useFahrenheit: _useFahrenheit),
             const SizedBox(height: 16),
-
-            // ВРЕМЕННЫЙ ДИАГНОСТИЧЕСКИЙ БЛОК — покажет реальные данные,
-            // чтобы понять, что приходит от API. Убрать после отладки.
-            _buildDebugPanel(weather),
-            const SizedBox(height: 16),
-
-            _safeBuild(
-              'DailyForecastList',
-              () => DailyForecastList(
-                  daily: weather.daily, useFahrenheit: _useFahrenheit),
-            ),
+            DailyForecastList(
+                daily: weather.daily, useFahrenheit: _useFahrenheit),
 
             const SizedBox(height: 16),
 
-            _safeBuild(
-              'SunArcCard',
-              () => SunArcCard(
-                  sunrise: weather.sunrise, sunset: weather.sunset),
-            ),
+            SunArcCard(sunrise: weather.sunrise, sunset: weather.sunset),
 
             const SizedBox(height: 16),
 
-            _safeBuild(
-              'AirQualityCard',
-              () => AirQualityCard(aqi: weather.airQualityIndex),
-            ),
+            AirQualityCard(aqi: weather.airQualityIndex),
 
             const SizedBox(height: 16),
 
@@ -365,62 +349,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
           ],
-        ),
-      ),
-    );
-  }
-
-  // ВРЕМЕННО: оборачивает виджет в try-catch на уровне build, чтобы вместо
-  // белого пятна показать текст ошибки, если внутри что-то падает.
-  Widget _safeBuild(String name, Widget Function() builder) {
-    try {
-      return builder();
-    } catch (e, stack) {
-      debugPrint('Ошибка при построении $name: $e\n$stack');
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.25),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.red, width: 1),
-        ),
-        child: Text(
-          'ОШИБКА в $name:\n$e',
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-      );
-    }
-  }
-
-  // ВРЕМЕННО: показывает сырые данные от API текстом, чтобы понять,
-  // что реально приходит и не является ли что-то нулевым/битым.
-  Widget _buildDebugPanel(WeatherData weather) {
-    final buffer = StringBuffer();
-    buffer.writeln('daily.length: ${weather.daily.length}');
-    for (var i = 0; i < weather.daily.length; i++) {
-      final d = weather.daily[i];
-      buffer.writeln(
-          '  [$i] date=${d.date} min=${d.tempMin} max=${d.tempMax} icon="${d.iconCode}"');
-    }
-    buffer.writeln('sunrise: ${weather.sunrise}');
-    buffer.writeln('sunset: ${weather.sunset}');
-    buffer.writeln('airQualityIndex: ${weather.airQualityIndex}');
-    buffer.writeln('hourly.length: ${weather.hourly.length}');
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: SelectableText(
-        buffer.toString(),
-        style: const TextStyle(
-          color: Colors.greenAccent,
-          fontSize: 11,
-          fontFamily: 'monospace',
         ),
       ),
     );
