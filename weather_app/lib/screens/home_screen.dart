@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
+              childAspectRatio: 1.15,
               children: [
                 _buildInfoCard(
                   icon: Icons.air_rounded,
@@ -376,10 +376,17 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(icon, color: Colors.white, size: 18),
           ),
           const SizedBox(height: 10),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
           const SizedBox(height: 2),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 19,
