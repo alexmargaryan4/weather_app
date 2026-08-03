@@ -23,7 +23,7 @@ class DailyForecastList extends StatelessWidget {
     // Находим глобальный минимум и максимум за все дни - для корректной шкалы полоски температуры
     final allMax = daily.map((d) => d.tempMax).reduce((a, b) => a > b ? a : b);
     final allMin = daily.map((d) => d.tempMin).reduce((a, b) => a < b ? a : b);
-    final range = (allMax - allMin).clamp(1, double.infinity);
+    final range = (allMax - allMin).clamp(1.0, double.infinity);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
