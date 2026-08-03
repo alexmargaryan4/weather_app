@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/weather_model.dart';
+import '../utils/temperature_utils.dart';
 import 'weather_icon.dart';
 
 class HourlyForecastList extends StatelessWidget {
   final List<HourlyForecast> hourly;
+  final bool useFahrenheit;
 
-  const HourlyForecastList({super.key, required this.hourly});
+  const HourlyForecastList({
+    super.key,
+    required this.hourly,
+    this.useFahrenheit = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'ПОЧАСОВОЙ ПРОГНОЗ',
               style: TextStyle(
@@ -31,15 +38,16 @@ class HourlyForecastList extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SizedBox(
-            height: 100,
+            height: 128,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               itemCount: hourly.length,
               itemBuilder: (context, index) {
                 final item = hourly[index];
+                final isNow = index == 0;
                 return TweenAnimationBuilder<double>(
                   duration: Duration(milliseconds: 400 + (index * 80)),
                   tween: Tween(begin: 0.0, end: 1.0),
@@ -54,23 +62,36 @@ class HourlyForecastList extends StatelessWidget {
                     );
                   },
                   child: Container(
-                    width: 60,
+                    width: 64,
                     margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isNow
+                          ? Colors.white.withOpacity(0.22)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(32),
+                      border: isNow
+                          ? Border.all(
+                              color: Colors.white.withOpacity(0.3), width: 1)
+                          : null,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          index == 0 ? 'Сейчас' : DateFormat.Hm().format(item.time),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
+                          isNow ? 'Сейчас' : DateFormat.Hm().format(item.time),
+                          style: TextStyle(
+                            color: isNow ? Colors.white : Colors.white70,
+                            fontSize: 12,
+                            fontWeight:
+                                isNow ? FontWeight.w600 : FontWeight.w400,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        WeatherIcon(iconCode: item.iconCode, size: 32),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+                        WeatherIcon(iconCode: item.iconCode, size: 30),
+                        const SizedBox(height: 10),
                         Text(
-                          '${item.temp.round()}°',
+                          TemperatureUtils.format(item.temp, useFahrenheit),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
