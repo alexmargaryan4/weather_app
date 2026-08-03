@@ -26,49 +26,115 @@ class DailyForecastList extends StatelessWidget {
     final range = (allMax - allMin).clamp(1.0, double.infinity);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.3), // ВРЕМЕННО: яркий цвет, чтобы видеть границы контейнера
+        color: Colors.white.withOpacity(0.14),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.yellow, width: 2), // ВРЕМЕННО
+        border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'ПРОГНОЗ НА 5 ДНЕЙ (allMax=$allMax allMin=$allMin range=$range)', // ВРЕМЕННО
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.0,
-              ),
+          const Text(
+            'ПРОГНОЗ НА 5 ДНЕЙ',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           ...daily.asMap().entries.map((entry) {
             final index = entry.key;
             final day = entry.value;
             final maxOffset = (allMax - day.tempMax) / range;
             final minOffset = (day.tempMin - allMin) / range;
+            final widthFactor = (1 - maxOffset - minOffset).clamp(0.08, 1.0);
             final isLast = index == daily.length - 1;
+            final isToday = index == 0;
 
-            return Container(
-              margin: EdgeInsets.only(bottom: isLast ? 0 : 4),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.3), // ВРЕМЕННО
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                // ВРЕМЕННО: чистый текст без сложной вёрстки, чтобы проверить рендер построчно
-                '[$index] ${day.date} min=${day.tempMin} max=${day.tempMax} '
-                'maxOffset=$maxOffset minOffset=$minOffset '
-                'widthFactor=${(1 - maxOffset - minOffset).clamp(0.08, 1.0)}',
-                style: const TextStyle(color: Colors.white, fontSize: 11),
+            return Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      isToday ? 'Сегодня' : DateFormat.E().format(day.date),
+                      style: TextStyle(
+                        color: isToday ? Colors.white : Colors.white70,
+                        fontSize: 14,
+                        fontWeight:
+                            isToday ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  WeatherIcon(iconCode: day.iconCode, size: 24),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      TemperatureUtils.format(day.tempMin, useFahrenheit),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final trackWidth = constraints.maxWidth;
+                        return Stack(
+                          alignment: Alignment.centerLeft,
+                          children: [
+                            Container(
+                              height: 4,
+                              width: trackWidth,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            Positioned(
+                              left: trackWidth * minOffset,
+                              child: Container(
+                                height: 4,
+                                width: trackWidth * widthFactor,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFFD97D),
+                                      Color(0xFFFF9F4A),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      TemperatureUtils.format(day.tempMax, useFahrenheit),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           }),
