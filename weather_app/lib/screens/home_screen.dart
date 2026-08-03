@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
+import '../services/settings_service.dart';
+import '../utils/temperature_utils.dart';
 import '../widgets/animated_background.dart';
-import '../widgets/weather_icon.dart';
 import '../widgets/hourly_forecast.dart';
 import '../widgets/daily_forecast.dart';
 import '../widgets/city_search_sheet.dart';
+import '../widgets/sun_arc.dart';
+import '../widgets/air_quality_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,15 +21,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
   final LocationService _locationService = LocationService();
+  final SettingsService _settingsService = SettingsService();
 
   WeatherData? _weatherData;
   bool _isLoading = true;
   String? _errorMessage;
+  bool _useFahrenheit = false;
+  List<String> _favoriteCities = [];
 
   @override
   void initState() {
     super.initState();
-    _loadWeatherByLocation();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final useFahrenheit = await _settingsService.getUseFahrenheit();
+    final favorites = await _settingsService.getFavoriteCities();
+    setState(() {
+      _useFahrenheit = useFahrenheit;
+      _favoriteCities = favorites;
+    });
+    await _loadWeatherByLocation();
+  }
+
+  Future<void> _toggleUnits() async {
+    final next = !_useFahrenheit;
+    setState(() => _useFahrenheit = next);
+    await _settingsService.setUseFahrenheit(next);
   }
 
   Future<void> _loadWeatherByLocation() async {
@@ -45,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _weatherData = weather;
         _isLoading = false;
       });
+      _settingsService.setLastCity(weather.cityName);
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -65,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _weatherData = weather;
         _isLoading = false;
       });
+      _settingsService.setLastCity(weather.cityName);
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -73,27 +97,64 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Переключиться на соседний избранный город свайпом (после текущего города,
+  // если он тоже в избранном, иначе просто по кругу избранных).
+  Future<void> _switchFavorite(int direction) async {
+    if (_favoriteCities.isEmpty) return;
+    final currentName = _weatherData?.cityName;
+    int currentIndex = _favoriteCities
+        .indexWhere((c) => c.toLowerCase() == currentName?.toLowerCase());
+    int nextIndex;
+    if (currentIndex == -1) {
+      nextIndex = direction > 0 ? 0 : _favoriteCities.length - 1;
+    } else {
+      nextIndex =
+          (currentIndex + direction) % _favoriteCities.length;
+      if (nextIndex < 0) nextIndex += _favoriteCities.length;
+    }
+    await _loadWeatherByCity(_favoriteCities[nextIndex]);
+  }
+
   void _openCitySearch() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => CitySearchSheet(
+        currentCity: _weatherData?.cityName,
         onCitySelected: _loadWeatherByCity,
         onUseCurrentLocation: _loadWeatherByLocation,
       ),
-    );
+    ).whenComplete(() async {
+      // Обновляем список избранных на случай, если что-то поменялось в шторке
+      final favorites = await _settingsService.getFavoriteCities();
+      setState(() => _favoriteCities = favorites);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedWeatherBackground(
-        iconCode: _weatherData?.iconCode ?? '01d',
-        child: SafeArea(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            child: _buildBody(),
+      backgroundColor: const Color(0xFF0F1C3F),
+      body: SizedBox.expand(
+        child: AnimatedWeatherBackground(
+          iconCode: _weatherData?.iconCode ?? '01d',
+          child: SafeArea(
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                final velocity = details.primaryVelocity ?? 0;
+                if (velocity.abs() < 200) return;
+                if (velocity < 0) {
+                  _switchFavorite(1); // свайп влево -> следующий город
+                } else {
+                  _switchFavorite(-1); // свайп вправо -> предыдущий город
+                }
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: _buildBody(),
+              ),
+            ),
           ),
         ),
       ),
@@ -126,6 +187,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _loadWeatherByLocation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.15),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 28),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
                 child: const Text('Попробовать снова'),
               ),
               TextButton(
@@ -153,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           children: [
-            // Верхняя панель с названием города и кнопкой смены города
+            // Верхняя панель с названием города и кнопками действий
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -165,10 +235,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                IconButton(
-                  onPressed: _openCitySearch,
-                  icon: const Icon(Icons.add_location_alt_outlined,
-                      color: Colors.white70),
+                const SizedBox(width: 4),
+                Material(
+                  color: Colors.white.withOpacity(0.14),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: _openCitySearch,
+                    icon: const Icon(Icons.add_location_alt_outlined,
+                        color: Colors.white70, size: 20),
+                  ),
+                ),
+                Material(
+                  color: Colors.white.withOpacity(0.14),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: _toggleUnits,
+                    tooltip: 'Единицы измерения',
+                    icon: Text(
+                      _useFahrenheit ? '°F' : '°C',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -185,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   Text(
-                    '${weather.temp.round()}°',
+                    TemperatureUtils.format(weather.temp, _useFahrenheit),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 88,
@@ -200,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Ощущается как ${weather.feelsLike.round()}°',
+                    'Ощущается как ${TemperatureUtils.format(weather.feelsLike, _useFahrenheit)}',
                     style: const TextStyle(color: Colors.white54, fontSize: 15),
                   ),
                 ],
@@ -209,29 +300,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            HourlyForecastList(hourly: weather.hourly),
+            HourlyForecastList(
+                hourly: weather.hourly, useFahrenheit: _useFahrenheit),
             const SizedBox(height: 16),
-            DailyForecastList(daily: weather.daily),
+            DailyForecastList(
+                daily: weather.daily, useFahrenheit: _useFahrenheit),
 
             const SizedBox(height: 16),
 
-            // Доп. параметры: ветер и влажность
-            Row(
+            SunArcCard(sunrise: weather.sunrise, sunset: weather.sunset),
+
+            const SizedBox(height: 16),
+
+            AirQualityCard(aqi: weather.airQualityIndex),
+
+            const SizedBox(height: 16),
+
+            // Доп. параметры: ветер, влажность, давление, видимость
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.5,
               children: [
-                Expanded(
-                  child: _buildInfoCard(
-                    icon: Icons.air_rounded,
-                    label: 'Ветер',
-                    value: '${weather.windSpeed.round()} м/с',
-                  ),
+                _buildInfoCard(
+                  icon: Icons.air_rounded,
+                  label: 'Ветер',
+                  value: '${weather.windSpeed.round()} м/с',
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildInfoCard(
-                    icon: Icons.water_drop_outlined,
-                    label: 'Влажность',
-                    value: '${weather.humidity}%',
-                  ),
+                _buildInfoCard(
+                  icon: Icons.water_drop_outlined,
+                  label: 'Влажность',
+                  value: '${weather.humidity}%',
+                ),
+                _buildInfoCard(
+                  icon: Icons.speed_rounded,
+                  label: 'Давление',
+                  value: '${(weather.pressure * 0.750062).round()} мм',
+                ),
+                _buildInfoCard(
+                  icon: Icons.visibility_outlined,
+                  label: 'Видимость',
+                  value: '${(weather.visibility / 1000).toStringAsFixed(1)} км',
                 ),
               ],
             ),
@@ -245,23 +357,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildInfoCard(
       {required IconData icon, required String label, required String value}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white70, size: 20),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 18),
+          ),
+          const SizedBox(height: 10),
           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 19,
               fontWeight: FontWeight.w600,
             ),
           ),
