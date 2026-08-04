@@ -13,6 +13,13 @@ class WeatherService {
   static const String airPollutionUrl =
       'https://api.openweathermap.org/data/2.5/air_pollution';
 
+  // Open-Meteo не требует API-ключа и отдаёт видимость (в метрах) как
+  // рассчитанную модельную величину без "потолка" в 10 км, в отличие от
+  // OpenWeatherMap, где станции часто просто не измеряют больше 10000 м.
+  // Используется ТОЛЬКО для видимости — вся остальная погода по-прежнему
+  // берётся из OpenWeatherMap, как и раньше.
+  static const String openMeteoUrl = 'https://api.open-meteo.com/v1/forecast';
+
   // Получить погоду по координатам (используется для геолокации)
   Future<WeatherData> getWeatherByCoordinates(double lat, double lon) async {
     final currentResponse = await _get(
@@ -26,6 +33,8 @@ class WeatherService {
       final forecastJson = jsonDecode(forecastResponse.body);
       var weather = WeatherData.fromJson(currentJson, forecastJson);
       weather = weather.copyWithAirQuality(await _fetchAirQuality(lat, lon));
+      weather = weather.copyWithVisibility(
+          await _fetchVisibility(lat, lon) ?? weather.visibility);
       return weather;
     } else {
       throw Exception(_errorMessageFor(currentResponse.statusCode));
@@ -53,6 +62,8 @@ class WeatherService {
       final forecastJson = jsonDecode(forecastResponse.body);
       var weather = WeatherData.fromJson(currentJson, forecastJson);
       weather = weather.copyWithAirQuality(await _fetchAirQuality(lat, lon));
+      weather = weather.copyWithVisibility(
+          await _fetchVisibility(lat, lon) ?? weather.visibility);
       return weather;
     } else {
       throw Exception('Не удалось загрузить прогноз для этого города');
@@ -74,6 +85,26 @@ class WeatherService {
       }
     } catch (_) {
       // Игнорируем — качество воздуха необязательный виджет
+    }
+    return null;
+  }
+
+  // Видимость (в метрах) от Open-Meteo. Возвращает null при любой ошибке —
+  // в этом случае просто останется значение от OpenWeatherMap (или null),
+  // так что экран погоды никогда не сломается из-за этого запроса.
+  Future<int?> _fetchVisibility(double lat, double lon) async {
+    try {
+      final response = await _get(
+          '$openMeteoUrl?latitude=$lat&longitude=$lon&current=visibility');
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final value = json['current']?['visibility'];
+        if (value != null) {
+          return (value as num).toInt();
+        }
+      }
+    } catch (_) {
+      // Игнорируем — видимость не критична, фолбэк на OpenWeatherMap ниже
     }
     return null;
   }
