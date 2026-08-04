@@ -1,5 +1,8 @@
 class WeatherData {
   final String cityName;
+  // Код страны ISO 3166 (например, "RU", "AM"), приходит от OpenWeatherMap
+  // в поле sys.country. Может быть null, если API его не вернул.
+  final String? countryCode;
   final double lat;
   final double lon;
   final double temp;
@@ -19,6 +22,7 @@ class WeatherData {
 
   WeatherData({
     required this.cityName,
+    this.countryCode,
     required this.lat,
     required this.lon,
     required this.temp,
@@ -40,6 +44,7 @@ class WeatherData {
   WeatherData copyWithAirQuality(int? aqi) {
     return WeatherData(
       cityName: cityName,
+      countryCode: countryCode,
       lat: lat,
       lon: lon,
       temp: temp,
@@ -63,6 +68,7 @@ class WeatherData {
   WeatherData copyWithVisibility(int? newVisibility) {
     return WeatherData(
       cityName: cityName,
+      countryCode: countryCode,
       lat: lat,
       lon: lon,
       temp: temp,
@@ -127,6 +133,7 @@ class WeatherData {
 
     return WeatherData(
       cityName: currentJson['name'],
+      countryCode: currentJson['sys']?['country'] as String?,
       lat: (currentJson['coord']['lat'] as num).toDouble(),
       lon: (currentJson['coord']['lon'] as num).toDouble(),
       temp: (currentJson['main']['temp'] as num).toDouble(),
