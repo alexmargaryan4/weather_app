@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 import 'home_screen.dart';
 
 /// Красивый загрузочный экран, показываемый при старте приложения.
@@ -119,6 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1B63C9),
       body: AnimatedBuilder(
@@ -166,9 +168,9 @@ class _SplashScreenState extends State<SplashScreen>
                             opacity: _titleFade,
                             child: Column(
                               children: [
-                                const Text(
-                                  'Погода',
-                                  style: TextStyle(
+                                Text(
+                                  l10n.appTitle,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 32,
                                     fontWeight: FontWeight.w600,
@@ -177,7 +179,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Точный прогноз каждый день',
+                                  l10n.splashTagline,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.75),
                                     fontSize: 14,

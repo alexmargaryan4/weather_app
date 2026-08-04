@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../localization/app_localizations.dart';
 import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
@@ -118,10 +119,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final position = await _locationService.getCurrentLocation();
+      if (!mounted) return;
+      final langCode = AppLocalizations.of(context).weatherApiLangCode;
       final weather = await _weatherService.getWeatherByCoordinates(
         position.latitude,
         position.longitude,
         cacheKey: 'geo',
+        langCode: langCode,
       );
       if (myRequestId != _requestId) return; // пользователь уже переключился
       setState(() {
@@ -135,8 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // молча остаёмся на них — не выбиваем пользователя на экран ошибки
       // ради устаревшего, но всё ещё полезного прогноза.
       if (cached != null) return;
+      if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = AppLocalizations.of(context).messageForError(e);
         _isLoading = false;
       });
     }
@@ -166,7 +171,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (cached != null && hasFreshCache) return;
 
     try {
-      final weather = await _weatherService.getWeatherByCityName(cityName);
+      final langCode = AppLocalizations.of(context).weatherApiLangCode;
+      final weather = await _weatherService.getWeatherByCityName(cityName,
+          langCode: langCode);
       if (myRequestId != _requestId) return;
       setState(() {
         _weatherData = weather;
@@ -176,8 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (myRequestId != _requestId) return;
       if (cached != null) return;
+      if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = AppLocalizations.of(context).messageForError(e);
         _isLoading = false;
       });
     }
@@ -242,6 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFF0F1C3F),
       body: SizedBox.expand(
@@ -289,6 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoading) {
       return const Center(
         key: ValueKey('loading'),
@@ -323,13 +333,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(28),
                   ),
                 ),
-                child: const Text('Попробовать снова'),
+                child: Text(l10n.tryAgain),
               ),
               TextButton(
                 onPressed: _openCitySearch,
-                child: const Text(
-                  'Или выбрать город вручную',
-                  style: TextStyle(color: Colors.white70),
+                child: Text(
+                  l10n.chooseCityManually,
+                  style: const TextStyle(color: Colors.white70),
                 ),
               ),
             ],
@@ -380,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: const CircleBorder(),
                   child: IconButton(
                     onPressed: _toggleUnits,
-                    tooltip: 'Единицы измерения',
+                    tooltip: l10n.unitsTooltip,
                     icon: Text(
                       _useFahrenheit ? '°F' : '°C',
                       style: const TextStyle(
@@ -421,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Ощущается как ${TemperatureUtils.format(weather.feelsLike, _useFahrenheit)}',
+                    '${l10n.feelsLike} ${TemperatureUtils.format(weather.feelsLike, _useFahrenheit)}',
                     style: const TextStyle(color: Colors.white54, fontSize: 15),
                   ),
                 ],
@@ -457,25 +467,26 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildInfoCard(
                   icon: Icons.air_rounded,
-                  label: 'Ветер',
-                  value: '${weather.windSpeed.round()} м/с',
+                  label: l10n.wind,
+                  value: '${weather.windSpeed.round()} ${l10n.windUnit}',
                 ),
                 _buildInfoCard(
                   icon: Icons.water_drop_outlined,
-                  label: 'Влажность',
+                  label: l10n.humidity,
                   value: '${weather.humidity}%',
                 ),
                 _buildInfoCard(
                   icon: Icons.speed_rounded,
-                  label: 'Давление',
-                  value: '${(weather.pressure * 0.750062).round()} мм',
+                  label: l10n.pressure,
+                  value:
+                      '${(weather.pressure * 0.750062).round()} ${l10n.pressureUnit}',
                 ),
                 _buildInfoCard(
                   icon: Icons.visibility_outlined,
-                  label: 'Видимость',
+                  label: l10n.visibility,
                   value: weather.visibility != null
-                      ? '${(weather.visibility! / 1000).toStringAsFixed(1)} км'
-                      : 'Нет данных',
+                      ? '${(weather.visibility! / 1000).toStringAsFixed(1)} ${l10n.visibilityUnit}'
+                      : l10n.noData,
                 ),
               ],
             ),
