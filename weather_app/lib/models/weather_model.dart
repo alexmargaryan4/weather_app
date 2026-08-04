@@ -58,6 +58,29 @@ class WeatherData {
     );
   }
 
+  // Возвращает копию с обновлённой видимостью (используется, когда видимость
+  // приходит отдельным запросом от другого источника — см. WeatherService).
+  WeatherData copyWithVisibility(int? newVisibility) {
+    return WeatherData(
+      cityName: cityName,
+      lat: lat,
+      lon: lon,
+      temp: temp,
+      feelsLike: feelsLike,
+      description: description,
+      iconCode: iconCode,
+      windSpeed: windSpeed,
+      humidity: humidity,
+      pressure: pressure,
+      visibility: newVisibility,
+      sunrise: sunrise,
+      sunset: sunset,
+      hourly: hourly,
+      daily: daily,
+      airQualityIndex: airQualityIndex,
+    );
+  }
+
   factory WeatherData.fromJson(
     Map<String, dynamic> currentJson,
     Map<String, dynamic> forecastJson,
