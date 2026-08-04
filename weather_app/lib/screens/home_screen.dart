@@ -269,10 +269,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 // Нижняя панель переключения городов — самолётик для
                 // геолокации и кружок на каждый сохранённый город, как
-                // страничный индикатор в приложении погоды Apple.
+                // страничный индикатор в приложении погоды Apple. Панель
+                // видна всегда (даже без избранных городов), а город,
+                // совпадающий с текущим геолокационным, не дублируется
+                // отдельным кружком — самолётик и так его показывает.
                 CityPageBar(
                   currentIndex: _currentPageIndex,
                   favoriteCities: _favoriteCities,
+                  geoCityName: _weatherService.peekCache('geo')?.cityName,
                   onSelect: _selectPage,
                   onRemoveFavorite: _removeFavoriteFromBar,
                 ),
