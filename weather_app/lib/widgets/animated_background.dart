@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'weather_particles.dart';
 
 class AnimatedWeatherBackground extends StatelessWidget {
   final String iconCode;
@@ -50,7 +51,14 @@ class AnimatedWeatherBackground extends StatelessWidget {
           colors: _getGradientColors(),
         ),
       ),
-      child: child,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Живые погодные частицы: дождь, снег, звёзды или солнечные блики
+          WeatherParticles(iconCode: iconCode),
+          child,
+        ],
+      ),
     );
   }
 }
