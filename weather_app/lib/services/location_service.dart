@@ -1,5 +1,23 @@
 import 'package:geolocator/geolocator.dart';
 
+/// Виды ошибок геолокации. Как и WeatherServiceException, сервис не хранит
+/// готовый текст сообщения — локализованный текст подбирается в UI-слое
+/// через AppLocalizations по коду ошибки.
+enum LocationErrorType {
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+}
+
+class LocationServiceException implements Exception {
+  final LocationErrorType type;
+
+  LocationServiceException(this.type);
+
+  @override
+  String toString() => 'LocationServiceException($type)';
+}
+
 class LocationService {
   // Проверяет разрешения и возвращает текущие координаты пользователя
   Future<Position> getCurrentLocation() async {
@@ -9,7 +27,7 @@ class LocationService {
     // Проверяем, включена ли геолокация на устройстве
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Службы геолокации отключены. Включите их в настройках.');
+      throw LocationServiceException(LocationErrorType.serviceDisabled);
     }
 
     // Проверяем разрешение
@@ -17,13 +35,12 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Доступ к геолокации отклонён пользователем.');
+        throw LocationServiceException(LocationErrorType.permissionDenied);
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-          'Доступ к геолокации заблокирован навсегда. Разрешите в настройках телефона.');
+      throw LocationServiceException(LocationErrorType.permissionDeniedForever);
     }
 
     // Получаем текущие координаты. Точность повышена до high — при medium

@@ -2,6 +2,30 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/weather_model.dart';
 
+/// Виды ошибок, которые может выбросить [WeatherService]. Сам сервис не
+/// хранит текстов сообщений (он не имеет доступа к выбранному языку
+/// интерфейса) — это позволяет UI-слою (например, HomeScreen) подобрать
+/// локализованный текст через AppLocalizations по коду ошибки.
+enum WeatherErrorType {
+  auth,
+  notFound,
+  cityNotFound,
+  rateLimit,
+  noInternet,
+  forecastLoad,
+  generic,
+}
+
+class WeatherServiceException implements Exception {
+  final WeatherErrorType type;
+  final int? statusCode;
+
+  WeatherServiceException(this.type, {this.statusCode});
+
+  @override
+  String toString() => 'WeatherServiceException($type, code: $statusCode)';
+}
+
 class WeatherService {
   // Вставьте сюда свой API-ключ с OpenWeatherMap
   static const String apiKey = 'd76b6cdb234d933ccca184840dce91ee';
@@ -43,16 +67,19 @@ class WeatherService {
   // [cacheKey] позволяет вызывающей стороне (HomeScreen) сохранить результат
   // под стабильным ключом ("geo"), даже если coordinates каждый раз чуть
   // отличаются из-за погрешности GPS.
+  // [langCode] — код языка для описания погоды от OpenWeatherMap
+  // (см. AppLocalizations.weatherApiLangCode); по умолчанию русский, чтобы
+  // поведение не изменилось для существующих вызовов без явного языка.
   Future<WeatherData> getWeatherByCoordinates(double lat, double lon,
-      {String? cacheKey}) async {
+      {String? cacheKey, String langCode = 'ru'}) async {
     // Запускаем все запросы одновременно, а не по очереди — раньше каждый
     // "await" ждал предыдущий запрос целиком, из-за чего суммарное время
     // загрузки было суммой всех запросов (несколько секунд). Погода,
     // прогноз, качество воздуха и видимость друг от друга не зависят,
     // поэтому их можно грузить параллельно и просто подождать самый долгий.
     final results = await Future.wait<Object?>([
-      _get('$currentWeatherUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=ru'),
-      _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=ru'),
+      _get('$currentWeatherUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
+      _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
       _fetchAirQuality(lat, lon),
       _fetchVisibility(lat, lon),
     ]);
@@ -73,19 +100,20 @@ class WeatherService {
       _store(weather.cityName.toLowerCase(), weather);
       return weather;
     } else {
-      throw Exception(_errorMessageFor(currentResponse.statusCode));
+      throw _exceptionFor(currentResponse.statusCode);
     }
   }
 
   // Получить погоду по названию города (используется при ручном поиске
   // и при переключении между сохранёнными городами).
-  Future<WeatherData> getWeatherByCityName(String cityName) async {
+  Future<WeatherData> getWeatherByCityName(String cityName,
+      {String langCode = 'ru'}) async {
     final currentResponse = await _get(
-        '$currentWeatherUrl?q=${Uri.encodeComponent(cityName)}&appid=$apiKey&units=metric&lang=ru');
+        '$currentWeatherUrl?q=${Uri.encodeComponent(cityName)}&appid=$apiKey&units=metric&lang=$langCode');
 
     if (currentResponse.statusCode != 200) {
-      throw Exception(_errorMessageFor(currentResponse.statusCode,
-          notFoundMessage: 'Город не найден. Проверьте название.'));
+      throw _exceptionFor(currentResponse.statusCode,
+          notFound: WeatherErrorType.cityNotFound);
     }
 
     final currentJson = jsonDecode(currentResponse.body);
@@ -95,7 +123,7 @@ class WeatherService {
     // Прогноз, качество воздуха и видимость друг от друга не зависят —
     // запускаем их одновременно вместо ожидания по очереди.
     final results = await Future.wait<Object?>([
-      _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=ru'),
+      _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
       _fetchAirQuality(lat, lon),
       _fetchVisibility(lat, lon),
     ]);
@@ -113,7 +141,7 @@ class WeatherService {
       _store(weather.cityName.toLowerCase(), weather);
       return weather;
     } else {
-      throw Exception('Не удалось загрузить прогноз для этого города');
+      throw WeatherServiceException(WeatherErrorType.forecastLoad);
     }
   }
 
@@ -166,21 +194,25 @@ class WeatherService {
             const Duration(seconds: 15),
           );
     } catch (e) {
-      throw Exception(
-          'Нет соединения с интернетом. Проверьте сеть и попробуйте снова.');
+      throw WeatherServiceException(WeatherErrorType.noInternet);
     }
   }
 
-  String _errorMessageFor(int statusCode, {String? notFoundMessage}) {
+  WeatherServiceException _exceptionFor(int statusCode,
+      {WeatherErrorType? notFound}) {
     switch (statusCode) {
       case 401:
-        return 'Ошибка авторизации API. Проверьте ключ OpenWeatherMap.';
+        return WeatherServiceException(WeatherErrorType.auth,
+            statusCode: statusCode);
       case 404:
-        return notFoundMessage ?? 'Данные не найдены.';
+        return WeatherServiceException(notFound ?? WeatherErrorType.notFound,
+            statusCode: statusCode);
       case 429:
-        return 'Превышен лимит запросов к погодному сервису. Попробуйте позже.';
+        return WeatherServiceException(WeatherErrorType.rateLimit,
+            statusCode: statusCode);
       default:
-        return 'Не удалось загрузить погоду. Код: $statusCode';
+        return WeatherServiceException(WeatherErrorType.generic,
+            statusCode: statusCode);
     }
   }
 }
