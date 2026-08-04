@@ -51,8 +51,10 @@ class _WeatherParticlesState extends State<WeatherParticles>
     if (code == '09' || code == '10' || code == '11') return _ParticleMode.rain;
     if (code == '13') return _ParticleMode.snow;
     if (isNight) return _ParticleMode.stars;
-    if (code == '01' || code == '02') return _ParticleMode.sunFlare;
-    return _ParticleMode.none;
+    // Днём при любой погоде без осадков (ясно, облачно, пасмурно) показываем
+    // мягкие солнечные блики — раньше это работало только для '01'/'02',
+    // и коды '03'/'04' (облачно/пасмурно) оставались вообще без анимации.
+    return _ParticleMode.sunFlare;
   }
 
   List<_Particle> _generateParticles(_ParticleMode mode) {
@@ -207,7 +209,7 @@ class _ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant _ParticlePainter oldDelegate) => true;
 }
 
-/// Мягкие вращающиеся блики света для ясной солнечной погоды.
+/// Мягкие вращающиеся блики света для ясной/облачной дневной погоды.
 class _SunFlarePainter extends CustomPainter {
   final double progress;
 
@@ -220,16 +222,28 @@ class _SunFlarePainter extends CustomPainter {
 
     for (int i = 0; i < 3; i++) {
       final localAngle = angle + (i * 2.1);
-      final radius = 40.0 + i * 26;
+      final radius = 55.0 + i * 34;
       final offset = Offset(
-        center.dx + math.cos(localAngle) * 6,
-        center.dy + math.sin(localAngle) * 6,
+        center.dx + math.cos(localAngle) * 14,
+        center.dy + math.sin(localAngle) * 14,
       );
       final paint = Paint()
-        ..color = Colors.white.withOpacity(0.05 - i * 0.01)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
+        ..color = Colors.white.withOpacity(0.16 - i * 0.03)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34);
       canvas.drawCircle(offset, radius, paint);
     }
+
+    // Дополнительный мягкий блик снизу-слева, чтобы сцена не выглядела пустой
+    // на широких экранах и было ощущение объёма даже без осадков.
+    final secondaryCenter = Offset(size.width * 0.15, size.height * 0.55);
+    final secondaryOffset = Offset(
+      secondaryCenter.dx + math.cos(-angle * 0.6) * 10,
+      secondaryCenter.dy + math.sin(-angle * 0.6) * 10,
+    );
+    final secondaryPaint = Paint()
+      ..color = Colors.white.withOpacity(0.06)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
+    canvas.drawCircle(secondaryOffset, 90, secondaryPaint);
   }
 
   @override
