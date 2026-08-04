@@ -25,8 +25,7 @@ let newChart = null;
 // Авторизация
 // ------------------------------------------------------------
 
-async function showDashboardIfLoggedIn() {
-  const { data: { session } } = await supabase.auth.getSession();
+function renderAuthState(session) {
   if (session) {
     loginScreen.style.display = 'none';
     dashboard.style.display = 'block';
@@ -56,12 +55,16 @@ loginForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  await showDashboardIfLoggedIn();
+  // Дальше ничего вручную не переключаем — переход на дашборд произойдёт
+  // через onAuthStateChange ниже, когда SDK подтвердит новую сессию.
+  // Это единственный надёжный источник истины: если тут же самим вызвать
+  // проверку сессии, можно словить гонку с этим же событием и мигание
+  // обратно на экран логина.
 });
 
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
-  await showDashboardIfLoggedIn();
+  // onAuthStateChange сам переключит экран на логин.
 });
 
 refreshBtn.addEventListener('click', () => loadAllData());
@@ -81,7 +84,6 @@ async function loadAllData() {
       loadTopCountries(),
       loadTopFavorites(),
       loadLocales(),
-      loadVersions(),
     ]);
     lastUpdatedEl.textContent = `Обновлено в ${new Date().toLocaleTimeString('ru-RU')}`;
   } catch (err) {
@@ -326,52 +328,6 @@ async function loadLocales() {
 }
 
 // ------------------------------------------------------------
-// Версии приложения (app_version) — кто на какой версии APK
-// ------------------------------------------------------------
-
-async function loadVersions() {
-  const { data, error } = await supabase.from('devices').select('app_version');
-  if (error) throw error;
-
-  const counts = new Map();
-  (data || []).forEach((row) => {
-    const key = row.app_version || 'неизвестно';
-    counts.set(key, (counts.get(key) || 0) + 1);
-  });
-
-  const sorted = Array.from(counts.entries())
-    .map(([name, count]) => ({ name, code: null, count }))
-    // Сортируем по версии по убыванию (новые сверху), если это похоже на
-    // семвер (1.2.3); иначе просто по количеству устройств.
-    .sort((a, b) => {
-      const cmp = compareVersionsDesc(a.name, b.name);
-      return cmp !== 0 ? cmp : b.count - a.count;
-    });
-
-  renderRankList('versionsList', sorted, (row) => row);
-}
-
-/// Сравнивает две строки версии по убыванию (напр. "1.10.0" > "1.9.2").
-/// Нечисловые/неполные значения (например "неизвестно") уходят вниз списка.
-function compareVersionsDesc(a, b) {
-  const pa = String(a).split('.').map((n) => parseInt(n, 10));
-  const pb = String(b).split('.').map((n) => parseInt(n, 10));
-  const aValid = pa.every((n) => !isNaN(n));
-  const bValid = pb.every((n) => !isNaN(n));
-  if (aValid && !bValid) return -1;
-  if (!aValid && bValid) return 1;
-  if (!aValid && !bValid) return 0;
-
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const x = pa[i] || 0;
-    const y = pb[i] || 0;
-    if (x !== y) return y - x;
-  }
-  return 0;
-}
-
-// ------------------------------------------------------------
 // Универсальный рендер ранжированного списка
 // ------------------------------------------------------------
 
@@ -412,15 +368,12 @@ function escapeHtml(str) {
 }
 
 // ------------------------------------------------------------
-// Реакция на смену состояния авторизации (например, в другой вкладке)
+// Единая точка входа: onAuthStateChange срабатывает и на старте
+// (с текущей сессией, если она есть), и при каждом входе/выходе.
+// Используем session прямо из события — без повторного getSession(),
+// чтобы не ловить гонку и мигание обратно на экран логина.
 // ------------------------------------------------------------
 
-supabase.auth.onAuthStateChange((_event, _session) => {
-  showDashboardIfLoggedIn();
+supabase.auth.onAuthStateChange((_event, session) => {
+  renderAuthState(session);
 });
-
-// ------------------------------------------------------------
-// Старт
-// ------------------------------------------------------------
-
-showDashboardIfLoggedIn();
