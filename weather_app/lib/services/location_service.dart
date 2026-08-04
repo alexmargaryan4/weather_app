@@ -26,9 +26,12 @@ class LocationService {
           'Доступ к геолокации заблокирован навсегда. Разрешите в настройках телефона.');
     }
 
-    // Получаем текущие координаты
+    // Получаем текущие координаты. Точность повышена до high — при medium
+    // GPS может давать разброс в сотни метров, из-за чего OpenWeatherMap
+    // при обратном геокодинге иногда "перескакивает" на соседний ближайший
+    // населённый пункт вместо того, где пользователь на самом деле находится.
     return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
+      desiredAccuracy: LocationAccuracy.high,
     );
   }
 }
