@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'localization/app_localizations.dart';
 import 'screens/splash_screen.dart';
+import 'services/analytics_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Инициализация Supabase не должна блокировать запуск экрана — но она
+  // асинхронная и быстрая, поэтому ждём её здесь один раз при старте.
+  // Если сети нет — init() тихо завершится ошибкой, приложение всё равно
+  // запустится и продолжит работать без аналитики.
+  await AnalyticsService.init();
   runApp(const WeatherApp());
 }
 
