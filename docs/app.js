@@ -6,6 +6,53 @@
 // только под залогиненным пользователем Supabase Auth.
 // ============================================================
 
+// ------------------------------------------------------------
+// Защита от главной причины "формы без обработчика": если CDN-скрипт
+// Supabase по какой-то причине не загрузился (медленная сеть, сбой
+// CDN, блокировка), window.supabase будет undefined и весь этот файл
+// упадёт с исключением на следующей строке — включая навешивание
+// обработчика на <form>. Без обработчика клик по кнопке "Войти"
+// вызывает ОБЫЧНУЮ отправку HTML-формы (GET на тот же URL с
+// email/паролем в query-строке — тот самый "?" в адресной строке).
+// Поэтому проверяем это явно и показываем понятную ошибку, вместо
+// того чтобы тихо ломать всю остальную инициализацию.
+// ------------------------------------------------------------
+if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+  const errEl = document.getElementById('loginError');
+  if (errEl) {
+    errEl.textContent =
+      '[Диагностика] Не удалось загрузить библиотеку Supabase (CDN). Проверьте интернет-соединение и обновите страницу.';
+  }
+  // Дополнительно гасим стандартную отправку формы, если она всё же
+  // есть в DOM, чтобы пароль точно не улетел в адресную строку.
+  const formEl = document.getElementById('loginForm');
+  if (formEl) {
+    formEl.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (errEl) {
+        errEl.textContent =
+          '[Диагностика] Библиотека Supabase не загружена. Обновите страницу и попробуйте снова.';
+      }
+    });
+  }
+  throw new Error('window.supabase (CDN @supabase/supabase-js) не загружен');
+}
+
+if (!window.WEATHER_DASHBOARD_CONFIG) {
+  const errEl = document.getElementById('loginError');
+  if (errEl) {
+    errEl.textContent = '[Диагностика] config.js не загружен — нет ключей Supabase.';
+  }
+  const formEl = document.getElementById('loginForm');
+  if (formEl) {
+    formEl.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (errEl) errEl.textContent = '[Диагностика] config.js не загружен. Обновите страницу.';
+    });
+  }
+  throw new Error('window.WEATHER_DASHBOARD_CONFIG не определён (config.js не загружен)');
+}
+
 const { supabaseUrl, supabaseAnonKey } = window.WEATHER_DASHBOARD_CONFIG;
 const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

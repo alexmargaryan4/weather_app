@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg-deep: #0a1128;
@@ -423,7 +423,7 @@
     <div class="login-mark">Weather+ · Внутренняя панель</div>
     <h1 class="login-title">Доступ по приглашению</h1>
     <p class="login-sub">Эта панель видна только вам. Войдите под своей учётной записью Supabase.</p>
-    <form id="loginForm">
+    <form id="loginForm" onsubmit="return false;">
       <div class="field">
         <label for="email">Email</label>
         <input type="email" id="email" autocomplete="username" required>
@@ -538,7 +538,7 @@
   </main>
 </div>
 
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script defer src="config.js"></script>
+<script defer src="app.js"></script>
 </body>
 </html>
