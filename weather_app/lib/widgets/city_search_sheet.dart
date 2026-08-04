@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 import '../services/settings_service.dart';
 
 class CitySearchSheet extends StatefulWidget {
@@ -52,6 +53,7 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final alreadyFavorite = widget.currentCity != null &&
         _favorites
             .any((c) => c.toLowerCase() == widget.currentCity!.toLowerCase());
@@ -84,10 +86,10 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
           const SizedBox(height: 20),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Изменить город',
-                  style: TextStyle(
+                  l10n.changeCity,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -119,7 +121,7 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
             controller: _controller,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Введите название города',
+              hintText: l10n.enterCityName,
               hintStyle: const TextStyle(color: Colors.white38),
               filled: true,
               fillColor: Colors.white.withOpacity(0.1),
@@ -144,7 +146,7 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
               Navigator.pop(context);
             },
             icon: const Icon(Icons.my_location),
-            label: const Text('Использовать мою геолокацию'),
+            label: Text(l10n.useMyLocation),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white.withOpacity(0.15),
               foregroundColor: Colors.white,
@@ -156,11 +158,11 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
           ),
           if (_favorites.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'ИЗБРАННЫЕ ГОРОДА',
-                style: TextStyle(
+                l10n.favoriteCities,
+                style: const TextStyle(
                   color: Colors.white54,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

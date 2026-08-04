@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../localization/app_localizations.dart';
 
 /// Круговая дуга, показывающая положение солнца между восходом и закатом.
 class SunArcCard extends StatelessWidget {
@@ -24,6 +25,7 @@ class SunArcCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -42,9 +44,9 @@ class SunArcCard extends StatelessWidget {
                 size: 16,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'СОЛНЦЕ',
-                style: TextStyle(
+              Text(
+                l10n.sun,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -73,8 +75,8 @@ class SunArcCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SunTimeLabel(label: 'Восход', time: sunrise),
-              _SunTimeLabel(label: 'Закат', time: sunset, alignEnd: true),
+              _SunTimeLabel(label: l10n.sunrise, time: sunrise),
+              _SunTimeLabel(label: l10n.sunset, time: sunset, alignEnd: true),
             ],
           ),
         ],
@@ -96,6 +98,7 @@ class _SunTimeLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dateFormatLocale = AppLocalizations.of(context).dateFormatLocale;
     return Column(
       crossAxisAlignment:
           alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -106,7 +109,7 @@ class _SunTimeLabel extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          DateFormat.Hm().format(time),
+          DateFormat.Hm(dateFormatLocale).format(time),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,

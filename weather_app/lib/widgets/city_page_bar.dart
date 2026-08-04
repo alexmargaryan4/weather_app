@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../localization/app_localizations.dart';
 
 /// Нижняя панель переключения городов — как страничный индикатор в
 /// приложении погоды Apple: слева самолётик (город по геолокации),
@@ -88,7 +89,7 @@ class _GeoDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return _DotButton(
       selected: selected,
-      tooltip: 'Моя геолокация',
+      tooltip: AppLocalizations.of(context).myLocationTooltip,
       onTap: () {
         HapticFeedback.selectionClick();
         onTap();
@@ -216,6 +217,7 @@ class _CityQuickMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -251,15 +253,15 @@ class _CityQuickMenu extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.arrow_forward_rounded,
                   color: Colors.white70),
-              title: const Text('Перейти к городу',
-                  style: TextStyle(color: Colors.white)),
+              title: Text(l10n.goToCity,
+                  style: const TextStyle(color: Colors.white)),
               onTap: () => Navigator.pop(context, 'open'),
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded,
                   color: Colors.redAccent),
-              title: const Text('Удалить из избранного',
-                  style: TextStyle(color: Colors.redAccent)),
+              title: Text(l10n.removeFromFavorites,
+                  style: const TextStyle(color: Colors.redAccent)),
               onTap: () => Navigator.pop(context, 'remove'),
             ),
           ],

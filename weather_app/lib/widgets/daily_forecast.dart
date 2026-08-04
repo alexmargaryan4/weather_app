@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../localization/app_localizations.dart';
 import '../models/weather_model.dart';
 import '../utils/temperature_utils.dart';
 import 'weather_icon.dart';
@@ -20,6 +21,8 @@ class DailyForecastList extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final l10n = AppLocalizations.of(context);
+
     // Находим глобальный минимум и максимум за все дни - для корректной шкалы полоски температуры
     final allMax = daily.map((d) => d.tempMax).reduce((a, b) => a > b ? a : b);
     final allMin = daily.map((d) => d.tempMin).reduce((a, b) => a < b ? a : b);
@@ -35,9 +38,9 @@ class DailyForecastList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'ПРОГНОЗ НА 5 ДНЕЙ',
-            style: TextStyle(
+          Text(
+            l10n.fiveDayForecast,
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -61,7 +64,10 @@ class DailyForecastList extends StatelessWidget {
                   SizedBox(
                     width: 44,
                     child: Text(
-                      isToday ? 'Сегодня' : DateFormat.E().format(day.date),
+                      isToday
+                          ? l10n.today
+                          : DateFormat.E(l10n.dateFormatLocale)
+                              .format(day.date),
                       style: TextStyle(
                         color: isToday ? Colors.white : Colors.white70,
                         fontSize: 14,
