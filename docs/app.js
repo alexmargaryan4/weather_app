@@ -22,6 +22,25 @@ let dauChart = null;
 let newChart = null;
 
 // ------------------------------------------------------------
+// ВРЕМЕННАЯ ДИАГНОСТИКА: показываем любую непойманную ошибку прямо
+// на экране логина, чтобы можно было прочитать её текст с телефона
+// без доступа к консоли разработчика. Убрать после того, как проблема
+// со входом будет найдена и исправлена.
+// ------------------------------------------------------------
+window.addEventListener('error', (e) => {
+  loginScreen.style.display = 'flex';
+  dashboard.style.display = 'none';
+  loginError.textContent = `[Диагностика] ${e.message}`;
+});
+window.addEventListener('unhandledrejection', (e) => {
+  loginScreen.style.display = 'flex';
+  dashboard.style.display = 'none';
+  const reason = e.reason;
+  const msg = (reason && (reason.message || reason.error_description || reason.hint)) || String(reason);
+  loginError.textContent = `[Диагностика] ${msg}`;
+});
+
+// ------------------------------------------------------------
 // Авторизация
 // ------------------------------------------------------------
 
@@ -88,7 +107,8 @@ async function loadAllData() {
     lastUpdatedEl.textContent = `Обновлено в ${new Date().toLocaleTimeString('ru-RU')}`;
   } catch (err) {
     console.error('Ошибка загрузки данных дашборда:', err);
-    lastUpdatedEl.textContent = 'Ошибка загрузки данных';
+    const msg = (err && (err.message || err.error_description || err.hint)) || String(err);
+    lastUpdatedEl.textContent = `Ошибка: ${msg}`;
   } finally {
     setRefreshState(false);
   }
