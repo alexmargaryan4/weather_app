@@ -5,6 +5,7 @@ import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
+import '../services/analytics_service.dart';
 import '../utils/temperature_utils.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hourly_forecast.dart';
@@ -71,6 +72,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     await _loadWeatherByLocation();
     _preloadFavorites();
+
+    // Регистрируем открытие приложения в аналитике (не блокирует UI —
+    // запускается в фоне после того, как экран уже готов показать погоду).
+    // Страна/город берутся из только что загруженных данных геолокации,
+    // если они успели прийти.
+    AnalyticsService.instance.trackAppOpen(
+      countryCode: _weatherData?.countryCode,
+      cityName: _weatherData?.cityName,
+    );
   }
 
   Future<void> _toggleUnits() async {
@@ -133,6 +143,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       _settingsService.setLastCity(weather.cityName);
+      AnalyticsService.instance.trackWeatherRequest(
+        cityName: weather.cityName,
+        countryCode: weather.countryCode,
+        source: 'geolocation',
+      );
     } catch (e) {
       if (myRequestId != _requestId) return;
       // Если уже показали данные из кэша, при ошибке фонового обновления
@@ -180,6 +195,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       _settingsService.setLastCity(weather.cityName);
+      AnalyticsService.instance.trackWeatherRequest(
+        cityName: weather.cityName,
+        countryCode: weather.countryCode,
+        source: 'search',
+      );
     } catch (e) {
       if (myRequestId != _requestId) return;
       if (cached != null) return;
@@ -227,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _settingsService.removeFavoriteCity(city);
     final favorites = await _settingsService.getFavoriteCities();
     setState(() => _favoriteCities = favorites);
+    AnalyticsService.instance.trackFavoriteRemoved(city);
   }
 
   void _openCitySearch() {
