@@ -11,6 +11,7 @@ import '../widgets/daily_forecast.dart';
 import '../widgets/city_search_sheet.dart';
 import '../widgets/sun_arc.dart';
 import '../widgets/air_quality_card.dart';
+import '../widgets/city_page_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,30 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _useFahrenheit = false;
   List<String> _favoriteCities = [];
 
+  // true, если текущие данные на экране получены по геолокации (значок
+  // самолётика в нижней панели), а не по названию сохранённого города.
+  // Хранится отдельным флагом, а не выводится из имени города, потому что
+  // геолокация иногда может совпасть по названию с избранным городом
+  // (например, живёшь в том же городе, что и сохранил вручную) — в этом
+  // случае сравнение только по имени выбрало бы не ту страницу.
+  bool _isCurrentLocationPage = true;
+
+  // Индекс текущей страницы. null (геолокация) считается страницей 0,
+  // если название текущего города не совпадает ни с одним избранным —
+  // это также покрывает случай, когда город открыт через поиск и не сохранён.
+  int get _currentPageIndex {
+    if (_isCurrentLocationPage) return 0;
+    final currentName = _weatherData?.cityName;
+    final index = _favoriteCities
+        .indexWhere((c) => c.toLowerCase() == currentName?.toLowerCase());
+    return index == -1 ? 0 : index + 1;
+  }
+
+  // Счётчик "поколений" запроса. Нужен, чтобы при быстром переключении
+  // городов ответ от предыдущего (уже неактуального) запроса не перезаписал
+  // экран поверх того города, на который пользователь уже переключился.
+  int _requestId = 0;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _favoriteCities = favorites;
     });
     await _loadWeatherByLocation();
+    _preloadFavorites();
   }
 
   Future<void> _toggleUnits() async {
@@ -53,24 +79,62 @@ class _HomeScreenState extends State<HomeScreen> {
     await _settingsService.setUseFahrenheit(next);
   }
 
+  // Заранее (в фоне, не блокируя интерфейс) подгружает погоду для всех
+  // избранных городов, чтобы при переключении на них через нижнюю панель
+  // или свайп данные уже лежали в кэше и показывались мгновенно.
+  void _preloadFavorites() {
+    for (final city in _favoriteCities) {
+      _weatherService.getWeatherByCityName(city).catchError((_) {
+        // Тихо игнорируем — это лишь предзагрузка, ошибка не критична
+        // и будет видна пользователю, если он реально откроет этот город.
+        return Future.value(null);
+      });
+    }
+  }
+
   Future<void> _loadWeatherByLocation() async {
+    final myRequestId = ++_requestId;
+
+    // Кэш-first: если для геолокации уже есть сохранённые данные (например,
+    // после возврата с другого города), показываем их сразу без спиннера,
+    // а свежие данные подгружаем в фоне и подменяем, когда придут.
+    final cached = _weatherService.peekCache('geo');
+    final hasFreshCache = _weatherService.isFresh('geo');
     setState(() {
-      _isLoading = true;
+      _isCurrentLocationPage = true;
+      if (cached != null) {
+        _weatherData = cached;
+        _isLoading = false;
+      } else {
+        _isLoading = true;
+      }
       _errorMessage = null;
     });
+
+    // Если кэш уже свежий (моложе 10 минут), не дёргаем сеть заново —
+    // город и так переключился мгновенно, а повторный запрос только зря
+    // расходует лимит API и трафик.
+    if (cached != null && hasFreshCache) return;
 
     try {
       final position = await _locationService.getCurrentLocation();
       final weather = await _weatherService.getWeatherByCoordinates(
         position.latitude,
         position.longitude,
+        cacheKey: 'geo',
       );
+      if (myRequestId != _requestId) return; // пользователь уже переключился
       setState(() {
         _weatherData = weather;
         _isLoading = false;
       });
       _settingsService.setLastCity(weather.cityName);
     } catch (e) {
+      if (myRequestId != _requestId) return;
+      // Если уже показали данные из кэша, при ошибке фонового обновления
+      // молча остаёмся на них — не выбиваем пользователя на экран ошибки
+      // ради устаревшего, но всё ещё полезного прогноза.
+      if (cached != null) return;
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
@@ -79,19 +143,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadWeatherByCity(String cityName) async {
+    final myRequestId = ++_requestId;
+    final key = cityName.toLowerCase();
+
+    // Тот же кэш-first подход, что и для геолокации: сразу показываем
+    // последний известный результат по этому городу (если есть), а затем
+    // обновляем в фоне — переключение между сохранёнными городами ощущается
+    // мгновенным вместо ожидания нескольких секунд на каждый тап/свайп.
+    final cached = _weatherService.peekCache(key);
+    final hasFreshCache = _weatherService.isFresh(key);
     setState(() {
-      _isLoading = true;
+      _isCurrentLocationPage = false;
+      if (cached != null) {
+        _weatherData = cached;
+        _isLoading = false;
+      } else {
+        _isLoading = true;
+      }
       _errorMessage = null;
     });
 
+    if (cached != null && hasFreshCache) return;
+
     try {
       final weather = await _weatherService.getWeatherByCityName(cityName);
+      if (myRequestId != _requestId) return;
       setState(() {
         _weatherData = weather;
         _isLoading = false;
       });
       _settingsService.setLastCity(weather.cityName);
     } catch (e) {
+      if (myRequestId != _requestId) return;
+      if (cached != null) return;
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isLoading = false;
@@ -118,6 +202,25 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadWeatherByCity(_favoriteCities[nextIndex]);
   }
 
+  // Переключение по индексу страницы — используется нижней панелью городов
+  // (CityPageBar). Индекс 0 — геолокация, дальше — избранные по порядку.
+  Future<void> _selectPage(int index) async {
+    if (index == _currentPageIndex) return;
+    if (index == 0) {
+      await _loadWeatherByLocation();
+    } else {
+      final city = _favoriteCities[index - 1];
+      await _loadWeatherByCity(city);
+    }
+  }
+
+  Future<void> _removeFavoriteFromBar(String city) async {
+    HapticFeedback.mediumImpact();
+    await _settingsService.removeFavoriteCity(city);
+    final favorites = await _settingsService.getFavoriteCities();
+    setState(() => _favoriteCities = favorites);
+  }
+
   void _openCitySearch() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
@@ -133,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Обновляем список избранных на случай, если что-то поменялось в шторке
       final favorites = await _settingsService.getFavoriteCities();
       setState(() => _favoriteCities = favorites);
+      _preloadFavorites();
     });
   }
 
@@ -144,20 +248,35 @@ class _HomeScreenState extends State<HomeScreen> {
         child: AnimatedWeatherBackground(
           iconCode: _weatherData?.iconCode ?? '01d',
           child: SafeArea(
-            child: GestureDetector(
-              onHorizontalDragEnd: (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (velocity.abs() < 200) return;
-                if (velocity < 0) {
-                  _switchFavorite(1); // свайп влево -> следующий город
-                } else {
-                  _switchFavorite(-1); // свайп вправо -> предыдущий город
-                }
-              },
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: _buildBody(),
-              ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity.abs() < 200) return;
+                      if (velocity < 0) {
+                        _switchFavorite(1); // свайп влево -> следующий город
+                      } else {
+                        _switchFavorite(-1); // свайп вправо -> предыдущий город
+                      }
+                    },
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      child: _buildBody(),
+                    ),
+                  ),
+                ),
+                // Нижняя панель переключения городов — самолётик для
+                // геолокации и кружок на каждый сохранённый город, как
+                // страничный индикатор в приложении погоды Apple.
+                CityPageBar(
+                  currentIndex: _currentPageIndex,
+                  favoriteCities: _favoriteCities,
+                  onSelect: _selectPage,
+                  onRemoveFavorite: _removeFavoriteFromBar,
+                ),
+              ],
             ),
           ),
         ),
