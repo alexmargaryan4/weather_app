@@ -9,9 +9,13 @@ import 'package:flutter/services.dart';
 ///
 /// [currentIndex] совпадает с `_currentPageIndex` в HomeScreen:
 /// индекс 0 — геолокация, дальше — favoriteCities по порядку.
+/// [geoCityName] — имя города, который сейчас определён по геолокации;
+/// если оно совпадает с одним из избранных, соответствующий кружок
+/// скрывается, чтобы не показывать один и тот же город дважды.
 class CityPageBar extends StatelessWidget {
   final int currentIndex;
   final List<String> favoriteCities;
+  final String? geoCityName;
   final ValueChanged<int> onSelect;
   final ValueChanged<String> onRemoveFavorite;
 
@@ -21,12 +25,16 @@ class CityPageBar extends StatelessWidget {
     required this.favoriteCities,
     required this.onSelect,
     required this.onRemoveFavorite,
+    this.geoCityName,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Если избранных городов нет, показывать нечего — переключаться не между чем.
-    if (favoriteCities.isEmpty) return const SizedBox.shrink();
+    // Самолётик (геолокация) показываем всегда — это не зависит от того,
+    // есть ли вообще избранные города. Кружок города прячем, только если
+    // он совпадает с текущим геолокационным: иначе один и тот же город
+    // отображался бы сразу двумя значками с одинаковой погодой.
+    final geoLower = geoCityName?.toLowerCase();
 
     return SizedBox(
       height: 56,
@@ -39,13 +47,15 @@ class CityPageBar extends StatelessWidget {
             onTap: () => onSelect(0),
           ),
           for (int i = 0; i < favoriteCities.length; i++)
-            _CityDot(
-              cityName: favoriteCities[i],
-              selected: currentIndex == i + 1,
-              onTap: () => onSelect(i + 1),
-              onLongPress: () =>
-                  _showCityMenu(context, favoriteCities[i], i + 1),
-            ),
+            if (geoLower == null ||
+                favoriteCities[i].toLowerCase() != geoLower)
+              _CityDot(
+                cityName: favoriteCities[i],
+                selected: currentIndex == i + 1,
+                onTap: () => onSelect(i + 1),
+                onLongPress: () =>
+                    _showCityMenu(context, favoriteCities[i], i + 1),
+              ),
         ],
       ),
     );
