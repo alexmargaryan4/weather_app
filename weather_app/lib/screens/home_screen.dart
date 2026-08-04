@@ -350,7 +350,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildInfoCard(
                   icon: Icons.visibility_outlined,
                   label: 'Видимость',
-                  value: '${(weather.visibility / 1000).toStringAsFixed(1)} км',
+                  value: weather.visibility != null
+                      ? '${(weather.visibility! / 1000).toStringAsFixed(1)} км'
+                      : 'Нет данных',
                 ),
               ],
             ),
