@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
@@ -46,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _toggleUnits() async {
+    HapticFeedback.selectionClick();
     final next = !_useFahrenheit;
     setState(() => _useFahrenheit = next);
     await _settingsService.setUseFahrenheit(next);
@@ -101,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // если он тоже в избранном, иначе просто по кругу избранных).
   Future<void> _switchFavorite(int direction) async {
     if (_favoriteCities.isEmpty) return;
+    HapticFeedback.lightImpact();
     final currentName = _weatherData?.cityName;
     int currentIndex = _favoriteCities
         .indexWhere((c) => c.toLowerCase() == currentName?.toLowerCase());
@@ -116,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openCitySearch() {
+    HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -215,7 +219,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return RefreshIndicator(
       key: const ValueKey('content'),
-      onRefresh: _loadWeatherByLocation,
+      onRefresh: () async {
+        HapticFeedback.mediumImpact();
+        await _loadWeatherByLocation();
+      },
       color: Colors.white,
       backgroundColor: Colors.blueGrey,
       child: SingleChildScrollView(
@@ -356,44 +363,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildInfoCard(
       {required IconData icon, required String label, required String value}) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+    return _PressableScale(
+      onTap: () => HapticFeedback.selectionClick(),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 18),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+    );
+  }
+}
+
+/// Небольшой переиспользуемый виджет, который слегка "сжимается" при нажатии
+/// (как карточки в iOS) и даёт лёгкий тактильный отклик.
+class _PressableScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _PressableScale({required this.child, this.onTap});
+
+  @override
+  State<_PressableScale> createState() => _PressableScaleState();
+}
+
+class _PressableScaleState extends State<_PressableScale> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }
