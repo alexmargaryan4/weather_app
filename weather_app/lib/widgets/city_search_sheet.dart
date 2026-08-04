@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
 import '../services/settings_service.dart';
+import '../services/analytics_service.dart';
 
 class CitySearchSheet extends StatefulWidget {
   final Function(String) onCitySelected;
@@ -39,11 +40,13 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
     if (city == null || city.trim().isEmpty) return;
     await _settings.addFavoriteCity(city);
     _loadFavorites();
+    AnalyticsService.instance.trackFavoriteAdded(city);
   }
 
   Future<void> _removeFavorite(String city) async {
     await _settings.removeFavoriteCity(city);
     _loadFavorites();
+    AnalyticsService.instance.trackFavoriteRemoved(city);
   }
 
   void _selectCity(String city) {
