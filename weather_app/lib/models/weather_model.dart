@@ -9,7 +9,7 @@ class WeatherData {
   final double windSpeed;
   final int humidity;
   final int pressure;
-  final int visibility;
+  final int? visibility;
   final DateTime sunrise;
   final DateTime sunset;
   final List<HourlyForecast> hourly;
@@ -113,7 +113,7 @@ class WeatherData {
       windSpeed: (currentJson['wind']['speed'] as num).toDouble(),
       humidity: currentJson['main']['humidity'],
       pressure: currentJson['main']['pressure'] ?? 1013,
-      visibility: currentJson['visibility'] ?? 10000,
+      visibility: (currentJson['visibility'] as num?)?.toInt(),
       sunrise: DateTime.fromMillisecondsSinceEpoch(
           ((currentJson['sys']?['sunrise'] ?? 0) as int) * 1000),
       sunset: DateTime.fromMillisecondsSinceEpoch(
