@@ -7,7 +7,13 @@
 // ============================================================
 
 const { supabaseUrl, supabaseAnonKey } = window.WEATHER_DASHBOARD_CONFIG;
-const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
 
 const loginScreen = document.getElementById('loginScreen');
 const dashboard = document.getElementById('dashboard');
@@ -42,10 +48,28 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // ------------------------------------------------------------
 // Авторизация
+//
+// На iOS Safari событие onAuthStateChange может сработать с задержкой
+// или не сразу после signInWithPassword (известная особенность WebKit
+// в связке с локальным хранилищем сессии). Поэтому не полагаемся
+// только на событие: переключаем экран сразу по результату самого
+// запроса логина, а onAuthStateChange держим как синхронизирующий
+// механизм для остальных случаев (открытие сайта с уже активной
+// сессией, выход, обновление токена, логин/логаут в другой вкладке).
+//
+// isSessionShown защищает от того, чтобы одно и то же состояние
+// (например, два подряд события с сессией) не перезапускало
+// loadAllData() лишний раз.
 // ------------------------------------------------------------
 
+let isSessionShown = null; // null = ещё неизвестно, true/false = что показано сейчас
+
 function renderAuthState(session) {
-  if (session) {
+  const hasSession = !!session;
+  if (isSessionShown === hasSession) return; // уже в этом состоянии — ничего не делаем
+  isSessionShown = hasSession;
+
+  if (hasSession) {
     loginScreen.style.display = 'none';
     dashboard.style.display = 'block';
     loadAllData();
@@ -64,7 +88,7 @@ loginForm.addEventListener('submit', async (e) => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   loginBtn.disabled = false;
   loginBtn.textContent = 'Войти';
@@ -74,16 +98,22 @@ loginForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  // Дальше ничего вручную не переключаем — переход на дашборд произойдёт
-  // через onAuthStateChange ниже, когда SDK подтвердит новую сессию.
-  // Это единственный надёжный источник истины: если тут же самим вызвать
-  // проверку сессии, можно словить гонку с этим же событием и мигание
-  // обратно на экран логина.
+  if (!data.session) {
+    // Очень редкий случай: сервер не вернул ошибку, но и сессии нет.
+    // Раньше это молча возвращало на экран логина без объяснения —
+    // теперь сообщаем явно, чтобы не гадать при диагностике.
+    loginError.textContent = '[Диагностика] Вход прошёл, но сессия не получена (data.session пуст).';
+    return;
+  }
+
+  // Переключаем экран сразу здесь, не дожидаясь onAuthStateChange —
+  // на iOS Safari это событие не всегда приходит вовремя.
+  renderAuthState(data.session);
 });
 
 logoutBtn.addEventListener('click', async () => {
   await supabase.auth.signOut();
-  // onAuthStateChange сам переключит экран на логин.
+  renderAuthState(null);
 });
 
 refreshBtn.addEventListener('click', () => loadAllData());
@@ -388,10 +418,11 @@ function escapeHtml(str) {
 }
 
 // ------------------------------------------------------------
-// Единая точка входа: onAuthStateChange срабатывает и на старте
-// (с текущей сессией, если она есть), и при каждом входе/выходе.
-// Используем session прямо из события — без повторного getSession(),
-// чтобы не ловить гонку и мигание обратно на экран логина.
+// onAuthStateChange как резервный/синхронизирующий механизм:
+// ловит открытие сайта с уже активной сессией, логаут/логин в другой
+// вкладке, обновление токена. renderAuthState сам игнорирует повторные
+// вызовы с тем же состоянием (см. isSessionShown выше), так что этот
+// обработчик безопасно дублирует прямой вызов после логина/логаута.
 // ------------------------------------------------------------
 
 supabase.auth.onAuthStateChange((_event, session) => {
