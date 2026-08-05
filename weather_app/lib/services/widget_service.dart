@@ -49,6 +49,25 @@ class WidgetService {
   /// подпись "Текущее местоположение" вместо названия города.
   static const String geoKey = '__geo__';
 
+  // Все операции, которые читают-меняют-пишут общий JSON с городами
+  // (updateCity/removeCity/syncFavorites), должны выполняться строго по
+  // очереди. Раньше они запускались параллельно (HomeScreen дергает их
+  // через unawaited из разных мест: _loadWeatherByLocation,
+  // _loadWeatherByCity, _init -> syncFavorites), и два одновременных
+  // read-modify-write могли затереть результат друг друга — например,
+  // геолокация успевала записаться, но следом syncFavorites читал ещё
+  // старую версию (без гео) и сохранял её обратно, стирая только что
+  // записанные данные. Отсюда и ощущение "виджет то показывает, то нет".
+  // _queue гарантирует, что каждая операция видит результат предыдущей.
+  Future<void> _queue = Future.value();
+
+  Future<T> _enqueue<T>(Future<T> Function() action) {
+    final result = _queue.then((_) => action());
+    // Ошибка одной операции не должна блокировать очередь для следующих.
+    _queue = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
   /// Сохраняет данные по одному городу (или по геолокации, если [key] ==
   /// [geoKey]) в набор, доступный виджету. Не трогает записи по другим
   /// городам — так набор пополняется постепенно, по мере того как
@@ -57,55 +76,77 @@ class WidgetService {
     required String key,
     required WeatherData weather,
     required String displayName,
-  }) async {
-    final cities = await _readCities();
-    cities[key] = _WidgetCityEntry(
-      key: key,
-      displayName: displayName,
-      tempCelsius: weather.temp,
-      iconCode: weather.iconCode,
-      description: weather.description,
-    );
-    await _writeCities(cities);
-    await _requestWidgetUpdate();
+  }) {
+    return _enqueue(() async {
+      final cities = await _readCities();
+      cities[key] = _WidgetCityEntry(
+        key: key,
+        displayName: displayName,
+        tempCelsius: weather.temp,
+        iconCode: weather.iconCode,
+        description: weather.description,
+      );
+      await _writeCities(cities);
+      await _requestWidgetUpdate();
+    });
   }
 
   /// Убирает запись о городе из набора, доступного виджету (например,
   /// когда пользователь удалил город из избранного).
-  Future<void> removeCity(String key) async {
-    final cities = await _readCities();
-    cities.remove(key);
-    await _writeCities(cities);
-    await _requestWidgetUpdate();
+  Future<void> removeCity(String key) {
+    return _enqueue(() async {
+      final cities = await _readCities();
+      cities.remove(key);
+      await _writeCities(cities);
+      await _requestWidgetUpdate();
+    });
   }
 
-  /// Полностью пересобирает набор городов для виджета из актуального
-  /// состояния приложения. Удобно вызывать после любого изменения списка
-  /// избранного, чтобы виджет не хранил города, которые больше не
-  /// актуальны (geoKey сохраняется всегда).
+  /// Убирает из набора виджета города, которые пользователь явно удалил
+  /// из избранного. geoKey и любые другие ключи (в том числе города,
+  /// которые сейчас не в избранном, но были недавно открыты через поиск)
+  /// не трогаются — пользователю нет причин ожидать, что просто открытый
+  /// город исчезнет из виджета сам по себе. Единственная цель этой
+  /// функции — очистить записи по городам, убранным из избранного, что
+  /// корректно делает removeCity при явном удалении; syncFavorites
+  /// оставлен как более лёгкая "уборка" на случай рассинхронизации
+  /// (например, после переустановки/обновления приложения), а не как
+  /// фильтр "показывать только избранное".
   Future<void> syncFavorites({
     required List<String> favoriteKeysLowercase,
-  }) async {
-    final cities = await _readCities();
-    cities.removeWhere(
-      (key, _) => key != geoKey && !favoriteKeysLowercase.contains(key),
-    );
-    await _writeCities(cities);
-    await _requestWidgetUpdate();
+  }) {
+    return _enqueue(() async {
+      final cities = await _readCities();
+      // Убираем только явно удалённые из избранного города. Текущий
+      // выбранный в виджете город (или геолокация) не удаляется, даже
+      // если он не в списке избранного — иначе виджет может остаться
+      // совсем без данных для отображения.
+      final selected = await HomeWidget.getWidgetData<String>(_keySelectedCity);
+      cities.removeWhere((key, _) =>
+          key != geoKey &&
+          key != selected &&
+          !favoriteKeysLowercase.contains(key));
+      await _writeCities(cities);
+      await _requestWidgetUpdate();
+    });
   }
 
   /// Устанавливает, какой город виджет должен показывать "по умолчанию".
   /// Обычно совпадает с тем, что видно на главном экране в момент выхода
   /// из приложения. Пользователь может переключить это прямо в виджете —
   /// тогда нативная сторона сама обновит этот ключ.
-  Future<void> setSelectedCity(String key) async {
-    await HomeWidget.saveWidgetData<String>(_keySelectedCity, key);
-    await _requestWidgetUpdate();
+  Future<void> setSelectedCity(String key) {
+    return _enqueue(() async {
+      await HomeWidget.saveWidgetData<String>(_keySelectedCity, key);
+      await _requestWidgetUpdate();
+    });
   }
 
-  Future<void> setUseFahrenheit(bool value) async {
-    await HomeWidget.saveWidgetData<bool>(_keyUseFahrenheit, value);
-    await _requestWidgetUpdate();
+  Future<void> setUseFahrenheit(bool value) {
+    return _enqueue(() async {
+      await HomeWidget.saveWidgetData<bool>(_keyUseFahrenheit, value);
+      await _requestWidgetUpdate();
+    });
   }
 
   /// Читает город, который в данный момент выбран в виджете (пользователь
