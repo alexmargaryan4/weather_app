@@ -77,6 +77,34 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /**
+     * Вызывается системой, когда пользователь меняет размер виджета
+     * (перетаскивает "уголок" на рабочем столе), а также сразу после
+     * размещения виджета.
+     *
+     * На Android 12+ (S) это не обязательно, так как система сама
+     * выбирает подходящий RemoteViews из набора, переданного через
+     * SizeF-маппинг в [updateWidget]. Но на более старых версиях выбор
+     * layout идёт вручную по [chooseLayout] на основе текущих
+     * OPTION_APPWIDGET_MIN_WIDTH/HEIGHT — а эти размеры известны только
+     * в момент вызова onAppWidgetOptionsChanged. Без переопределения этого
+     * метода виджет держал тот layout, что был выбран при первом
+     * добавлении, и при последующем ресайзе продолжал рисовать его в
+     * новых (меньших или больших) границах — из-за этого контент
+     * (кнопки-чипсы, иконка, температура) наезжал друг на друга или
+     * обрезался, вместо того чтобы переключиться на более подходящий
+     * по размеру layout.
+     */
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: android.os.Bundle,
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateWidget(context, appWidgetManager, appWidgetId)
+    }
+
     // -------------------------------------------------------------------------
     // Основная логика обновления
     // -------------------------------------------------------------------------
@@ -115,12 +143,28 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         val city = cities[selectedKey] ?: cities.values.first()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+: передаём несколько RemoteViews и система сама
-            // подбирает лучший по размеру виджета.
+            // Android 12+: передаём несколько RemoteViews. Система выбирает
+            // ту запись, чей SizeF целиком помещается в текущий размер
+            // виджета (наибольшую из подходящих) — она НЕ интерполирует
+            // между записями. Раньше здесь было только 3 точки, привязанные
+            // строго к "квадратным" пропорциям (110x40, 220x100, 220x160).
+            // При нестандартных пропорциях — например, широкий, но низкий
+            // виджет (300x60) — ни одна из "средних/больших" записей не
+            // подходила по высоте, и система откатывалась на самый маленький
+            // layout, растянутый на всю ширину, либо (при широком, но чуть
+            // более высоком виджете) выбирала medium/large с чипсами,
+            // рассчитанными на бóльшую ширину, из-за чего при последующем
+            // сужении контент наезжал сам на себя. Добавляем промежуточные
+            // варианты по обеим осям, чтобы для любых пропорций между
+            // минимальным и максимальным размером виджета нашёлся layout,
+            // рассчитанный на близкую к реальной площадь.
             val viewMapping = mapOf(
                 SizeF(110f, 40f) to buildSmallViews(context, city, useFahrenheit),
-                SizeF(220f, 100f) to buildMediumViews(context, city, cities, selectedKey, useFahrenheit),
-                SizeF(220f, 160f) to buildLargeViews(context, city, cities, selectedKey, useFahrenheit),
+                SizeF(180f, 40f) to buildSmallViews(context, city, useFahrenheit),
+                SizeF(220f, 100f) to buildMediumViews(context, city, cities, selectedKey, useFahrenheit, 220),
+                SizeF(180f, 110f) to buildMediumViews(context, city, cities, selectedKey, useFahrenheit, 180),
+                SizeF(220f, 160f) to buildLargeViews(context, city, cities, selectedKey, useFahrenheit, 220),
+                SizeF(320f, 160f) to buildLargeViews(context, city, cities, selectedKey, useFahrenheit, 320),
             )
             manager.updateAppWidget(widgetId, RemoteViews(viewMapping))
         } else {
@@ -148,8 +192,8 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         useFahrenheit: Boolean,
     ): RemoteViews {
         return when {
-            heightDp >= 160 -> buildLargeViews(context, city, cities, selectedKey, useFahrenheit)
-            widthDp >= 200 && heightDp >= 100 -> buildMediumViews(context, city, cities, selectedKey, useFahrenheit)
+            heightDp >= 160 -> buildLargeViews(context, city, cities, selectedKey, useFahrenheit, widthDp)
+            widthDp >= 200 && heightDp >= 100 -> buildMediumViews(context, city, cities, selectedKey, useFahrenheit, widthDp)
             else -> buildSmallViews(context, city, useFahrenheit)
         }
     }
@@ -183,6 +227,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         cities: Map<String, WidgetCityData>,
         selectedKey: String,
         useFahrenheit: Boolean,
+        widthDp: Int,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.weather_widget_medium)
 
@@ -194,7 +239,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
         views.setOnClickPendingIntent(R.id.widget_root, launchAppIntent(context, city.key))
 
-        fillCityChips(context, views, cities, selectedKey, useFahrenheit)
+        fillCityChips(context, views, cities, selectedKey, useFahrenheit, widthDp)
 
         return views
     }
@@ -212,6 +257,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         cities: Map<String, WidgetCityData>,
         selectedKey: String,
         useFahrenheit: Boolean,
+        widthDp: Int,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.weather_widget_large)
 
@@ -223,7 +269,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
         views.setOnClickPendingIntent(R.id.widget_root, launchAppIntent(context, city.key))
 
-        fillCityChips(context, views, cities, selectedKey, useFahrenheit)
+        fillCityChips(context, views, cities, selectedKey, useFahrenheit, widthDp)
         fillHourlyRow(context, views, city, useFahrenheit)
 
         return views
@@ -237,6 +283,13 @@ class WeatherWidgetProvider : AppWidgetProvider() {
      * Заполняет строку чипсов городов.
      * Первым всегда идёт геолокация (если есть запись с ключом [WidgetKeys.GEO_KEY]),
      * затем остальные города — в порядке появления в [cities].
+     *
+     * [widthDp] — фактическая ширина виджета в данный момент (см. вызовы из
+     * buildMediumViews/buildLargeViews, куда она приходит из RemoteViews'ного
+     * SizeF-маппинга или из OPTION_APPWIDGET_MIN_WIDTH). На узких виджетах
+     * MAX_CHIPS чипсов по ~4 символа не помещаются и наезжают друг на друга —
+     * подбираем число видимых чипсов под доступную ширину вместо фиксированных
+     * четырёх.
      */
     private fun fillCityChips(
         context: Context,
@@ -244,11 +297,18 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         cities: Map<String, WidgetCityData>,
         selectedKey: String,
         useFahrenheit: Boolean,
+        widthDp: Int,
     ) {
+        // Грубая оценка: одному чипсу нужно примерно 70dp, чтобы вместить
+        // иконку/подпись и температуру, не обрезаясь. Всегда показываем
+        // минимум 2 (иначе переключатель городов теряет смысл) и не больше
+        // MAX_CHIPS, даже если места сильно больше.
+        val visibleChips = (widthDp / 70).coerceIn(2, MAX_CHIPS)
+
         // Сортируем: геолокация первой, затем остальные.
         val orderedKeys = cities.keys
             .sortedWith(compareBy { if (it == WidgetKeys.GEO_KEY) 0 else 1 })
-            .take(MAX_CHIPS)
+            .take(visibleChips)
 
         for (i in 0 until MAX_CHIPS) {
             val chipId = CHIP_IDS[i]
