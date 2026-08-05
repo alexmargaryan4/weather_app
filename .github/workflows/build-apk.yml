@@ -8,6 +8,9 @@ on:
       - '.github/workflows/build-apk.yml'
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,11 +34,14 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Clean previous build artifacts
+        run: flutter clean
+
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Clean previous build artifacts
-        run: flutter clean
+      - name: Verify home_widget dependency resolved
+        run: grep -A2 "^  home_widget:" pubspec.lock
 
       - name: Build APK (release)
         run: flutter build apk --release --verbose
@@ -45,3 +51,19 @@ jobs:
         with:
           name: app-release-apk
           path: weather_app/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Commit updated pubspec.lock
+        # Коммитим сгенерированный pubspec.lock обратно в репозиторий, чтобы
+        # он был виден в GitHub (и совпадал с тем, что реально ушло в сборку).
+        # Без этого шага lock-файл существовал только внутри runner'а и
+        # пропадал вместе с ним после сборки.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- pubspec.lock; then
+            git add pubspec.lock
+            git commit -m "chore: update pubspec.lock [skip ci]"
+            git push
+          else
+            echo "pubspec.lock unchanged, nothing to commit"
+          fi
