@@ -120,7 +120,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
       if (uri != null) {
-        final city = uri.queryParameters['city'];
+        // Ключ параметра должен совпадать с тем, что кладёт
+        // WeatherWidgetProvider.launchAppIntent на нативной стороне
+        // ("weather_app://widget?city_key=..."), а не "city".
+        final city = uri.queryParameters['city_key'];
         if (city != null && city.isNotEmpty) return city;
       }
     } catch (_) {
@@ -131,7 +134,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleWidgetClickUri(Uri? uri) {
-    final city = uri?.queryParameters['city'];
+    // См. комментарий в _cityKeyFromWidgetLaunch — параметр называется
+    // "city_key" на нативной стороне, а не "city".
+    final city = uri?.queryParameters['city_key'];
     if (city == null || city.isEmpty) return;
     if (city == WidgetService.geoKey) {
       _loadWeatherByLocation();
