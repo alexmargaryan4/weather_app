@@ -4,6 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Weather+ · Панель</title>
+<script>
+  // ВРЕМЕННАЯ ДИАГНОСТИКА (самый ранний перехватчик, ни от чего не
+  // зависит): ловит абсолютно любую ошибку на странице, даже если
+  // все остальные скрипты и элементы ещё не готовы, и рисует текст
+  // прямо поверх страницы через свой собственный DOM-узел.
+  // Убрать вместе с остальной диагностикой после исправления бага.
+  (function () {
+    function showRawError(text) {
+      var box = document.getElementById('__rawDiag');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = '__rawDiag';
+        box.style.cssText =
+          'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a0d0d;' +
+          'color:#ffd9d9;font:12px monospace;padding:10px;white-space:pre-wrap;' +
+          'word-break:break-word;max-height:50vh;overflow:auto;';
+        (document.body || document.documentElement).appendChild(box);
+      }
+      box.textContent += text + '\n\n';
+    }
+    window.addEventListener('error', function (e) {
+      showRawError('[RAW ERROR] ' + e.message + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      var msg = (r && (r.message || r.error_description)) || String(r);
+      showRawError('[RAW REJECTION] ' + msg);
+    });
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -432,7 +462,7 @@
         <label for="password">Пароль</label>
         <input type="password" id="password" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="btn-primary" id="loginBtn">Войти</button>
+      <button type="submit" class="btn-primary" id="loginBtn" onclick="document.getElementById('loginError').textContent = '[RAW CLICK] Кнопка нажата в ' + new Date().toLocaleTimeString('ru-RU');">Войти</button>
       <div class="login-error" id="loginError"></div>
     </form>
   </div>
