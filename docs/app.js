@@ -54,7 +54,7 @@ if (!window.WEATHER_DASHBOARD_CONFIG) {
 }
 
 const { supabaseUrl, supabaseAnonKey } = window.WEATHER_DASHBOARD_CONFIG;
-const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -135,7 +135,7 @@ loginForm.addEventListener('submit', async (e) => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   loginBtn.disabled = false;
   loginBtn.textContent = 'Войти';
@@ -159,7 +159,7 @@ loginForm.addEventListener('submit', async (e) => {
 });
 
 logoutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
   renderAuthState(null);
 });
 
@@ -212,16 +212,16 @@ async function loadMetrics() {
     new7Res,
     totalRequestsRes,
   ] = await Promise.all([
-    supabase.from('devices').select('device_id', { count: 'exact', head: true }),
-    supabase
+    supabaseClient.from('devices').select('device_id', { count: 'exact', head: true }),
+    supabaseClient
       .from('weather_requests')
       .select('device_id', { count: 'exact', head: true })
       .gte('requested_at', todayStart.toISOString()),
-    supabase
+    supabaseClient
       .from('devices')
       .select('device_id', { count: 'exact', head: true })
       .gte('first_seen_at', sevenDaysAgo.toISOString()),
-    supabase.from('weather_requests').select('id', { count: 'exact', head: true }),
+    supabaseClient.from('weather_requests').select('id', { count: 'exact', head: true }),
   ]);
 
   setMetric('mTotal', totalDevicesRes.count);
@@ -247,7 +247,7 @@ function formatNumber(n) {
 // ------------------------------------------------------------
 
 async function loadDauChart() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('v_daily_active_users')
     .select('day, active_devices')
     .order('day', { ascending: true })
@@ -266,7 +266,7 @@ async function loadDauChart() {
 // ------------------------------------------------------------
 
 async function loadNewDevicesChart() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('v_daily_new_devices')
     .select('day, new_devices')
     .order('day', { ascending: true })
@@ -345,7 +345,7 @@ function formatDateShort(isoDate) {
 // ------------------------------------------------------------
 
 async function loadTopCities() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('v_top_cities')
     .select('city_name, country_code, request_count')
     .limit(8);
@@ -363,7 +363,7 @@ async function loadTopCities() {
 // ------------------------------------------------------------
 
 async function loadTopCountries() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('v_top_countries')
     .select('country_code, request_count')
     .limit(8);
@@ -381,7 +381,7 @@ async function loadTopCountries() {
 // ------------------------------------------------------------
 
 async function loadTopFavorites() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('v_active_favorites')
     .select('city_name, country_code');
 
@@ -407,7 +407,7 @@ async function loadTopFavorites() {
 // ------------------------------------------------------------
 
 async function loadLocales() {
-  const { data, error } = await supabase.from('devices').select('locale');
+  const { data, error } = await supabaseClient.from('devices').select('locale');
   if (error) throw error;
 
   const counts = new Map();
@@ -472,6 +472,6 @@ function escapeHtml(str) {
 // обработчик безопасно дублирует прямой вызов после логина/логаута.
 // ------------------------------------------------------------
 
-supabase.auth.onAuthStateChange((_event, session) => {
+supabaseClient.auth.onAuthStateChange((_event, session) => {
   renderAuthState(session);
 });
