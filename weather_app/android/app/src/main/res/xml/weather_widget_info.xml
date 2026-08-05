@@ -1,1 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Один провайдер обслуживает все размеры сразу — от маленького
+    (2x1 ячейки) до большого (4x2). Android сам подбирает подходящий
+    layout из res/layout через layout-w*dp-h*dp квалификаторы
+    (см. WeatherWidgetProvider.chooseLayout, который дублирует этот
+    выбор явно в коде — см. комментарий там про причину дублирования).
 
+    minWidth/minHeight соответствуют минимальному размеру "маленького"
+    варианта (2x1 ячейки лаунчера). targetCellWidth/Height (Android 12+)
+    задают "родной" размер по умолчанию при добавлении — средний (4x2).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="330dp"
+    android:maxResizeHeight="220dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/weather_widget_medium"
+    android:previewLayout="@layout/weather_widget_medium"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable"
+    android:description="@string/widget_label" />
