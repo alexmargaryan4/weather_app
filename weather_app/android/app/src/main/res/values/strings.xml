@@ -5,4 +5,10 @@
          не совпадает ни с одним из values-XX ниже, например для
          украинского, испанского и т.д. — они будут видеть английский вариант). -->
     <string name="app_name">Weather+</string>
+    <!-- Название виджета в списке виджетов на рабочем столе Android -->
+    <string name="widget_label">Weather+</string>
+    <string name="widget_no_data">Open the app to load weather</string>
+    <string name="widget_current_location">Current location</string>
+    <!-- %1$s = day of week (e.g. "Thursday"), %2$s = date (e.g. "5 August") -->
+    <string name="widget_date_format">%1$s, %2$s</string>
 </resources>

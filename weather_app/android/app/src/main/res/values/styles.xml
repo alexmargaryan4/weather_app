@@ -15,4 +15,27 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <!-- Чипс города в переключателе виджета (RemoteViews поддерживают
+         только ограниченный набор атрибутов view — держим этот стиль
+         простым: без изменения фона отсюда, фон переключается в коде
+         через setInt(R.id.widget_chip_N, "setBackgroundResource", ...)
+         в WeatherWidgetProvider, т.к. RemoteViews не умеют state-list
+         drawable по тапу. -->
+    <style name="WidgetCityChip">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:background">@drawable/widget_chip_background</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
 </resources>
