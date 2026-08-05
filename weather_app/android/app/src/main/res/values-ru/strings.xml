@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Погода+</string>
+    <string name="widget_label">Погода+</string>
+    <string name="widget_no_data">Откройте приложение, чтобы загрузить погоду</string>
+    <string name="widget_current_location">Текущее местоположение</string>
+    <string name="widget_date_format">%1$s, %2$s</string>
 </resources>
