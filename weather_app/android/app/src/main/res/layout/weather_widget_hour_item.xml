@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Один "столбик" почасового прогноза для большого виджета: время,
+    иконка, температура. Добавляется программно 3-4 раза через
+    RemoteViews.addView(R.id.widget_hourly_row, ...) в
+    WeatherWidgetProvider, т.к. RemoteViews не поддерживают
+    RecyclerView/ListView без отдельного RemoteViewsService — а здесь
+    элементов и так мало (максимум 4), полноценный список избыточен.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/hour_item_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="—"
+        android:textColor="#B8C4E0"
+        android:textSize="10sp" />
+
+    <ImageView
+        android:id="@+id/hour_item_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginTop="2dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_widget_clear_day" />
+
+    <TextView
+        android:id="@+id/hour_item_temp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="—°"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp" />
+</LinearLayout>
