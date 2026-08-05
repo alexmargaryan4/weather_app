@@ -77,10 +77,26 @@ class _HomeScreenState extends State<HomeScreen> {
     // запускается в фоне после того, как экран уже готов показать погоду).
     // Страна/город берутся из только что загруженных данных геолокации,
     // если они успели прийти.
-    AnalyticsService.instance.trackAppOpen(
-      countryCode: _weatherData?.countryCode,
-      cityName: _weatherData?.cityName,
-    );
+    //
+    // ВРЕМЕННАЯ ДИАГНОСТИКА: если trackAppOpen вернёт текст ошибки —
+    // показываем его через SnackBar, чтобы понять, почему аналитика не
+    // доходит до Supabase. Убрать после того, как проблема будет найдена.
+    AnalyticsService.instance
+        .trackAppOpen(
+          countryCode: _weatherData?.countryCode,
+          cityName: _weatherData?.cityName,
+        )
+        .then((errorText) {
+      if (errorText != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorText),
+            duration: const Duration(seconds: 15),
+            backgroundColor: Colors.red.shade900,
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _toggleUnits() async {
