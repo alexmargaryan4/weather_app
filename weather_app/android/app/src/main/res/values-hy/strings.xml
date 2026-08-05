@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Եղանակ+</string>
+    <string name="widget_label">Եղանակ+</string>
+    <string name="widget_no_data">Բացեք հավելվածը՝ եղանակը բեռնելու համար</string>
+    <string name="widget_current_location">Ընթացիկ գտնվելու վայրը</string>
+    <string name="widget_date_format">%1$s, %2$s</string>
 </resources>
