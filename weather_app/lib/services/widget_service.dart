@@ -27,8 +27,22 @@ class WidgetService {
 
   // Имя класса Kotlin-провайдера виджета. Используется, чтобы после
   // записи данных явно попросить систему перерисовать уже размещённые
-  // виджеты (см. android/.../WeatherWidgetProvider.kt).
+  // виджеты (см. android/.../widget/WeatherWidgetProvider.kt).
+  //
+  // ВАЖНО: home_widget строит имя класса Android-получателя как
+  // "<applicationId>.<androidName>", если передан только androidName —
+  // то есть "com.example.weather_app.WeatherWidgetProvider". Но
+  // провайдер лежит в подпакете widget:
+  // com.example.weather_app.widget.WeatherWidgetProvider.
+  // Из-за этого несовпадения ComponentName не находит ни один
+  // размещённый виджет, и updateAppWidget по факту ни на что не
+  // действует — виджет остаётся с прежним (пустым) содержимым сколько
+  // ни заходи в приложение. Поэтому здесь передаётся полный путь через
+  // qualifiedAndroidName, который home_widget использует как есть, без
+  // подстановки packageName.
   static const String _androidWidgetProviderName = 'WeatherWidgetProvider';
+  static const String _qualifiedAndroidWidgetProviderName =
+      'com.example.weather_app.widget.WeatherWidgetProvider';
 
   /// Ключ записи для геолокации — используется тем же способом, что и
   /// WeatherService.peekCache('geo'), чтобы виджет мог показать понятную
@@ -128,6 +142,7 @@ class WidgetService {
     await HomeWidget.updateWidget(
       name: _androidWidgetProviderName,
       androidName: _androidWidgetProviderName,
+      qualifiedAndroidName: _qualifiedAndroidWidgetProviderName,
     );
   }
 }
