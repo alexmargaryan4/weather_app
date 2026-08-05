@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK and iOS IPA
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
 
     defaults:
@@ -67,3 +67,52 @@ jobs:
           else
             echo "pubspec.lock unchanged, nothing to commit"
           fi
+
+  build-ios:
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: weather_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Clean previous build artifacts
+        run: flutter clean
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (release, no codesign)
+        # Виджеты (home_widget) на iOS не настроены (нужен отдельный Widget
+        # Extension target и App Group) — на этом этапе просто собираем
+        # основное приложение без подписи, как обычный .app-бандл.
+        run: flutter build ios --release --no-codesign --verbose
+
+      - name: Package unsigned IPA
+        # flutter build ipa требует настроенную подпись/профиль, поэтому
+        # для неподписанного IPA собираем Payload-структуру вручную из
+        # уже собранного Runner.app и упаковываем её в .ipa (это обычный zip).
+        run: |
+          set -euo pipefail
+          BUILD_DIR="build/ios/iphoneos"
+          PAYLOAD_DIR="$BUILD_DIR/Payload"
+          mkdir -p "$PAYLOAD_DIR"
+          cp -R "$BUILD_DIR/Runner.app" "$PAYLOAD_DIR/Runner.app"
+          cd "$BUILD_DIR"
+          zip -r -q -X app-release-unsigned.ipa Payload
+          cd -
+          mv "$BUILD_DIR/app-release-unsigned.ipa" .
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-ipa
+          path: weather_app/app-release-unsigned.ipa
