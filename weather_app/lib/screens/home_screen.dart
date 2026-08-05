@@ -95,6 +95,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (cityFromWidget != null && cityFromWidget != WidgetService.geoKey) {
       await _loadWeatherByCity(cityFromWidget);
+      // Экран открыт сразу на конкретном городе (тап по чипсу в виджете),
+      // поэтому _loadWeatherByLocation() выше не вызывается и геолокация
+      // никогда не попадёт в данные виджета — из-за этого при запуске
+      // только через чипсы городов чипс геолокации в виджете не появлялся
+      // вообще, даже если разрешение есть и всё бы отработало. Подгружаем
+      // её отдельно в фоне, не блокируя показ уже выбранного города.
+      _preloadLocationForWidget();
     } else {
       await _loadWeatherByLocation();
     }
@@ -156,14 +163,67 @@ class _HomeScreenState extends State<HomeScreen> {
   // Заранее (в фоне, не блокируя интерфейс) подгружает погоду для всех
   // избранных городов, чтобы при переключении на них через нижнюю панель
   // или свайп данные уже лежали в кэше и показывались мгновенно.
+  //
+  // Также передаёт каждый результат в WidgetService: раньше это делалось
+  // только при реальном открытии города на экране, поэтому виджет "не
+  // всегда" знал погоду избранных городов — если пользователь их давно
+  // не открывал вручную, чипсы в виджете показывали устаревшие данные
+  // или не показывали их вовсе.
   void _preloadFavorites() {
     for (final city in _favoriteCities) {
-      _weatherService.getWeatherByCityName(city).catchError((_) {
+      final key = city.toLowerCase();
+      _weatherService.getWeatherByCityName(city).then((weather) {
+        unawaited(_widgetService.updateCity(
+          key: key,
+          weather: weather,
+          displayName: weather.cityName,
+        ));
+      }).catchError((_) {
         // Тихо игнорируем — это лишь предзагрузка, ошибка не критична
         // и будет видна пользователю, если он реально откроет этот город.
-        return Future.value(null);
+        return null;
       });
     }
+  }
+
+  // Тихо подгружает геолокацию в фоне и передаёт результат в WidgetService,
+  // не трогая экран (в отличие от _loadWeatherByLocation, здесь нет setState
+  // и нет своего _requestId — экран в этот момент уже занят другим городом,
+  // на который приложение было открыто через виджет).
+  //
+  // Нужен только для одного сценария: приложение запущено тапом по чипсу
+  // конкретного города в виджете, из-за чего _loadWeatherByLocation() в
+  // _init() не вызывается вовсе. Без этого геолокация не появлялась бы в
+  // данных виджета, пока пользователь ни разу не откроет приложение
+  // "обычным способом" — с рабочего стола, а не через сам виджет.
+  //
+  // Если геолокация недоступна (нет разрешения, служба выключена и т.п.),
+  // ошибка молча проглатывается — мы уже показываем выбранный виджетом
+  // город, и это лишь фоновая попытка, а не то, чего ждёт пользователь на
+  // экране прямо сейчас.
+  void _preloadLocationForWidget() {
+    // Если для геолокации уже есть недавние данные, не дёргаем сеть — это
+    // лишь предзагрузка, а не показ на экране.
+    if (_weatherService.isFresh('geo')) return;
+    _locationService.getCurrentLocation().then((position) async {
+      if (!mounted) return;
+      final langCode = AppLocalizations.of(context).weatherApiLangCode;
+      final weather = await _weatherService.getWeatherByCoordinates(
+        position.latitude,
+        position.longitude,
+        cacheKey: 'geo',
+        langCode: langCode,
+      );
+      unawaited(_widgetService.updateCity(
+        key: WidgetService.geoKey,
+        weather: weather,
+        displayName: weather.cityName,
+      ));
+    }).catchError((_) {
+      // Нет доступа/разрешения — по договорённости просто не показываем
+      // чипс геолокации в виджете, пока запрос не пройдёт успешно.
+      return null;
+    });
   }
 
   Future<void> _loadWeatherByLocation() async {
@@ -187,8 +247,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Если кэш уже свежий (моложе 10 минут), не дёргаем сеть заново —
     // город и так переключился мгновенно, а повторный запрос только зря
-    // расходует лимит API и трафик.
-    if (cached != null && hasFreshCache) return;
+    // расходует лимит API и трафик. Но виджет всё равно нужно уведомить,
+    // что сейчас на экране геолокация — иначе при возврате на неё внутри
+    // одной сессии (например, свайпнули на другой город и обратно) виджет
+    // остаётся выбранным на прежнем городе, хотя экран уже показывает
+    // геопозицию.
+    if (cached != null && hasFreshCache) {
+      unawaited(_widgetService.setSelectedCity(WidgetService.geoKey));
+      return;
+    }
 
     try {
       final position = await _locationService.getCurrentLocation();
@@ -277,9 +344,13 @@ class _HomeScreenState extends State<HomeScreen> {
         weather: weather,
         displayName: weather.cityName,
       ));
-      if (_favoriteCities.any((c) => c.toLowerCase() == key)) {
-        unawaited(_widgetService.setSelectedCity(key));
-      }
+      // Раньше виджет переключался на открытый город, только если он уже
+      // был в избранном — если пользователь просто посмотрел город через
+      // поиск, виджет продолжал показывать что-то другое, хотя человек
+      // только что открыл именно этот город. Виджет должен отражать то,
+      // что видно на экране в момент выхода из приложения, вне
+      // зависимости от того, добавлен город в избранное или нет.
+      unawaited(_widgetService.setSelectedCity(key));
     } catch (e) {
       if (myRequestId != _requestId) return;
       if (cached != null) return;
