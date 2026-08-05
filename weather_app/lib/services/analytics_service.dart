@@ -60,7 +60,12 @@ class AnalyticsService {
 
   /// Вызвать один раз при старте приложения (после инициализации Supabase).
   /// Регистрирует устройство при первом запуске / обновляет last_seen_at.
-  Future<void> trackAppOpen({String? countryCode, String? cityName}) async {
+  ///
+  /// ВРЕМЕННАЯ ДИАГНОСТИКА: возвращает текст ошибки (или null при успехе),
+  /// чтобы её можно было показать на экране и понять, почему аналитика
+  /// не доходит до Supabase. Убрать возврат String? и вернуть Future<void>
+  /// после того, как проблема будет найдена и исправлена.
+  Future<String?> trackAppOpen({String? countryCode, String? cityName}) async {
     try {
       final deviceId = await _getOrCreateDeviceId();
       final locale = PlatformDispatcher.instance.locale.languageCode;
@@ -83,8 +88,9 @@ class AnalyticsService {
       }, onConflict: 'device_id');
 
       _initialized = true;
-    } catch (_) {
-      // Тихо игнорируем — аналитика необязательна для работы приложения.
+      return null;
+    } catch (e) {
+      return '[Диагностика] trackAppOpen: $e';
     }
   }
 
