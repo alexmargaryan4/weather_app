@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:home_widget/home_widget.dart';
 import '../localization/app_localizations.dart';
 import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../services/analytics_service.dart';
+import '../services/widget_service.dart';
 import '../utils/temperature_utils.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hourly_forecast.dart';
@@ -26,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
   final LocationService _locationService = LocationService();
   final SettingsService _settingsService = SettingsService();
+  final WidgetService _widgetService = WidgetService();
 
   WeatherData? _weatherData;
   bool _isLoading = true;
@@ -57,10 +61,21 @@ class _HomeScreenState extends State<HomeScreen> {
   // экран поверх того города, на который пользователь уже переключился.
   int _requestId = 0;
 
+  // Подписка на клики по виджету, пока приложение уже открыто (например,
+  // свёрнуто в фон, а не полностью закрыто). initiallyLaunchedFromHomeWidget
+  // ниже покрывает холодный запуск — этот стрим нужен для тёплого.
+  StreamSubscription<Uri?>? _widgetClickSubscription;
+
   @override
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _widgetClickSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -70,8 +85,23 @@ class _HomeScreenState extends State<HomeScreen> {
       _useFahrenheit = useFahrenheit;
       _favoriteCities = favorites;
     });
-    await _loadWeatherByLocation();
+
+    // Если приложение открыто тапом по конкретному городу в виджете —
+    // сразу переходим на этот город вместо геолокации по умолчанию.
+    final cityFromWidget = await _cityKeyFromWidgetLaunch();
+
+    _widgetClickSubscription =
+        HomeWidget.widgetClicked.listen(_handleWidgetClickUri);
+
+    if (cityFromWidget != null && cityFromWidget != WidgetService.geoKey) {
+      await _loadWeatherByCity(cityFromWidget);
+    } else {
+      await _loadWeatherByLocation();
+    }
     _preloadFavorites();
+    unawaited(_widgetService.syncFavorites(
+      favoriteKeysLowercase: favorites.map((c) => c.toLowerCase()).toList(),
+    ));
 
     // Аналитика отключена — AnalyticsService теперь ничего не делает и
     // никуда не отправляет данные (см. services/analytics_service.dart).
@@ -81,11 +111,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Определяет, каким городом было запущено приложение — либо холодным
+  // стартом через тап по виджету (initiallyLaunchedFromHomeWidget), либо
+  // просто читает последний выбранный в виджете город как запасной
+  // вариант. Возвращает null, если приложение открыто обычным способом
+  // (с рабочего стола/из списка приложений, а не из виджета).
+  Future<String?> _cityKeyFromWidgetLaunch() async {
+    try {
+      final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      if (uri != null) {
+        final city = uri.queryParameters['city'];
+        if (city != null && city.isNotEmpty) return city;
+      }
+    } catch (_) {
+      // Плагин недоступен (например, платформа без поддержки) — просто
+      // продолжаем обычный запуск по геолокации.
+    }
+    return null;
+  }
+
+  void _handleWidgetClickUri(Uri? uri) {
+    final city = uri?.queryParameters['city'];
+    if (city == null || city.isEmpty) return;
+    if (city == WidgetService.geoKey) {
+      _loadWeatherByLocation();
+    } else {
+      _loadWeatherByCity(city);
+    }
+  }
+
   Future<void> _toggleUnits() async {
     HapticFeedback.selectionClick();
     final next = !_useFahrenheit;
     setState(() => _useFahrenheit = next);
     await _settingsService.setUseFahrenheit(next);
+    unawaited(_widgetService.setUseFahrenheit(next));
   }
 
   // Заранее (в фоне, не блокируя интерфейс) подгружает погоду для всех
@@ -146,6 +206,12 @@ class _HomeScreenState extends State<HomeScreen> {
         countryCode: weather.countryCode,
         source: 'geolocation',
       );
+      unawaited(_widgetService.updateCity(
+        key: WidgetService.geoKey,
+        weather: weather,
+        displayName: weather.cityName,
+      ));
+      unawaited(_widgetService.setSelectedCity(WidgetService.geoKey));
     } catch (e) {
       if (myRequestId != _requestId) return;
       // Если уже показали данные из кэша, при ошибке фонового обновления
@@ -198,6 +264,17 @@ class _HomeScreenState extends State<HomeScreen> {
         countryCode: weather.countryCode,
         source: 'search',
       );
+      // Ключ виджета для города — тот же lowercase-ключ, что использует
+      // WeatherService для кэша, чтобы избранное и виджет ссылались на
+      // одни и те же записи.
+      unawaited(_widgetService.updateCity(
+        key: key,
+        weather: weather,
+        displayName: weather.cityName,
+      ));
+      if (_favoriteCities.any((c) => c.toLowerCase() == key)) {
+        unawaited(_widgetService.setSelectedCity(key));
+      }
     } catch (e) {
       if (myRequestId != _requestId) return;
       if (cached != null) return;
@@ -246,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final favorites = await _settingsService.getFavoriteCities();
     setState(() => _favoriteCities = favorites);
     AnalyticsService.instance.trackFavoriteRemoved(city);
+    unawaited(_widgetService.removeCity(city.toLowerCase()));
   }
 
   void _openCitySearch() {
@@ -264,6 +342,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final favorites = await _settingsService.getFavoriteCities();
       setState(() => _favoriteCities = favorites);
       _preloadFavorites();
+      unawaited(_widgetService.syncFavorites(
+        favoriteKeysLowercase:
+            favorites.map((c) => c.toLowerCase()).toList(),
+      ));
     });
   }
 
