@@ -364,9 +364,19 @@ class AppLocalizations {
       'hy': 'Ջերմաստիճան',
     },
     'mapStormsNote': {
-      'en': 'Storm activity shown via dense cloud cover (no dedicated radar layer on the free tier).',
-      'ru': 'Грозовая активность показана через плотную облачность (отдельного слоя радара на бесплатном тарифе нет).',
-      'hy': 'Ամպրոպային ակտիվությունը ցուցադրված է խիտ ամպամածությամբ (անվճար սակագնի դեպքում առանձին ռադարային շերտ չկա)։',
+      'en': 'Storm activity is shown as areas of high-intensity radar precipitation (no dedicated lightning layer in the free tier).',
+      'ru': 'Грозовая активность показана как зоны осадков высокой интенсивности на радаре (отдельного слоя молний на бесплатном тарифе нет).',
+      'hy': 'Ամպրոպային ակտիվությունը ցուցադրված է որպես բարձր ինտենսիվության տեղումների գոտիներ ռադարի վրա (անվճար սակագնի դեպքում կայծակի առանձին շերտ չկա)։',
+    },
+    'mapDataUnavailable': {
+      'en': 'Map data is temporarily unavailable. Please check your connection and try again.',
+      'ru': 'Данные карты временно недоступны. Проверьте соединение и попробуйте снова.',
+      'hy': 'Քարտեզի տվյալները ժամանակավորապես անհասանելի են։ Ստուգեք կապը և փորձեք կրկին։',
+    },
+    'mapRetry': {
+      'en': 'Retry',
+      'ru': 'Повторить',
+      'hy': 'Կրկին փորձել',
     },
     'openInBrowser': {
       'en': 'Open full map',
@@ -522,6 +532,8 @@ class AppLocalizations {
   String get mapWind => _t('mapWind');
   String get mapStorms => _t('mapStorms');
   String get mapTemperature => _t('mapTemperature');
+  String get mapDataUnavailable => _t('mapDataUnavailable');
+  String get mapRetry => _t('mapRetry');
   String get mapStormsNote => _t('mapStormsNote');
   String get openInBrowser => _t('openInBrowser');
 
