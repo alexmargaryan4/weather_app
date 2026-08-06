@@ -175,6 +175,11 @@ class AppLocalizations {
       'ru': 'ИЗБРАННЫЕ ГОРОДА',
       'hy': 'ԸՆՏՐԱՆԻ ՔԱՂԱՔՆԵՐ',
     },
+    'noCitiesFound': {
+      'en': 'No cities found',
+      'ru': 'Города не найдены',
+      'hy': 'Քաղաքներ չեն գտնվել',
+    },
     'myLocation': {
       'en': 'My location',
       'ru': 'Моя геолокация',
@@ -296,6 +301,7 @@ class AppLocalizations {
   String get enterCityName => _t('enterCityName');
   String get useMyLocation => _t('useMyLocation');
   String get favoriteCities => _t('favoriteCities');
+  String get noCitiesFound => _t('noCitiesFound');
   String get myLocation => _t('myLocation');
   String get goToCity => _t('goToCity');
   String get removeFromFavorites => _t('removeFromFavorites');
