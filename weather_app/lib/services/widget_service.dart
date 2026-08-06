@@ -44,12 +44,6 @@ class WidgetService {
   static const String _qualifiedAndroidWidgetProviderName =
       'com.example.weather_app.widget.WeatherWidgetProvider';
 
-  // Имя (kind) iOS-виджета. Должно совпадать один-в-один с
-  // `kind` в ios/WeatherWidgetExtension/WeatherWidgetBundle.swift —
-  // home_widget на iOS ищет WidgetKit-конфигурацию по этому имени, а не
-  // по имени класса (на iOS нет отдельного "провайдера", как на Android).
-  static const String _iOSWidgetName = 'WeatherWidget';
-
   /// Ключ записи для геолокации — используется тем же способом, что и
   /// WeatherService.peekCache('geo'), чтобы виджет мог показать понятную
   /// подпись "Текущее местоположение" вместо названия города.
@@ -183,15 +177,13 @@ class WidgetService {
     await HomeWidget.saveWidgetData<String>(_keyCitiesJson, encoded);
   }
 
-  /// Просит систему перерисовать все размещённые виджеты этого приложения
-  /// с уже сохранёнными данными — на Android через ComponentName
-  /// нативного провайдера, на iOS через kind WidgetKit-конфигурации.
+  /// Просит систему Android перерисовать все размещённые виджеты этого
+  /// приложения с уже сохранёнными данными.
   Future<void> _requestWidgetUpdate() async {
     await HomeWidget.updateWidget(
       name: _androidWidgetProviderName,
       androidName: _androidWidgetProviderName,
       qualifiedAndroidName: _qualifiedAndroidWidgetProviderName,
-      iOSName: _iOSWidgetName,
     );
   }
 }
