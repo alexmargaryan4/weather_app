@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+// intl экспортирует свой собственный класс TextDirection (LTR/RTL), который
+// конфликтует с TextDirection из package:flutter/material.dart (ltr/rtl) —
+// без "hide" сборка падает с "Member not found: 'ltr'", так как компилятор
+// разрешает имя в пользу версии из intl.
+import 'package:intl/intl.dart' hide TextDirection;
 import '../localization/app_localizations.dart';
 import '../models/weather_model.dart';
 import '../utils/temperature_utils.dart';
