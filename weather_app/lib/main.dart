@@ -1,23 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:home_widget/home_widget.dart';
 import 'localization/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'services/analytics_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // На iOS home_widget читает/пишет данные виджета через App Group
-  // UserDefaults, а не через обычные SharedPreferences — поэтому ему нужно
-  // явно сообщить id группы. Без этого вызова HomeWidget.saveWidgetData на
-  // iOS будет молча писать в "неправильное" (обычное) хранилище, которое
-  // WeatherWidgetExtension не видит, и виджет останется пустым.
-  // Id должен совпадать один-в-один с:
-  //  - ios/Runner/Runner.entitlements
-  //  - ios/WeatherWidgetExtension/WeatherWidgetExtension.entitlements
-  //  - widgetAppGroupId в WeatherWidgetModels.swift
-  // На Android вызов безопасен и ничего не делает.
-  await HomeWidget.setAppGroupId('group.com.example.weatherApp');
   // Инициализация Supabase не должна блокировать запуск экрана — но она
   // асинхронная и быстрая, поэтому ждём её здесь один раз при старте.
   // Если сети нет — init() тихо завершится ошибкой, приложение всё равно
