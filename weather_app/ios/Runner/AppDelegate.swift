@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import workmanager
+import flutter_local_notifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -22,6 +23,13 @@ import workmanager
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    // Требуется flutter_local_notifications, чтобы обработчики нажатий на
+    // уведомления и фоновые действия имели доступ к зарегистрированным
+    // плагинам в отдельном isolate — без этого коллбэка уведомления
+    // приходят, но тап по ним/фоновые действия не будут работать.
+    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
+      GeneratedPluginRegistrant.register(with: registry)
+    }
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 }
