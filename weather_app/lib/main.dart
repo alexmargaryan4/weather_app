@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'localization/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/weather_watcher_task.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +12,12 @@ void main() async {
   // Если сети нет — init() тихо завершится ошибкой, приложение всё равно
   // запустится и продолжит работать без аналитики.
   await AnalyticsService.init();
+  // Регистрация фонового исполнителя Workmanager должна произойти как
+  // можно раньше и ровно один раз за жизнь процесса — иначе повторные
+  // regsterPeriodicTask из HomeScreen могут не найти диспетчер задач на
+  // Android после холодного старта в фоне (например, когда систему
+  // разбудил именно periodic task, а не открытие приложения пользователем).
+  WeatherWatcherTask.init();
   runApp(const WeatherApp());
 }
 
