@@ -28,6 +28,20 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Приложению нужен доступ к геолокации, чтобы показывать погоду в вашем текущем местоположении.</string>
+	<!-- Фоновая проверка погоды (WeatherWatcherTask через Workmanager /
+	     BGTaskScheduler) и обработка отложенных задач для точной доставки
+	     ежедневной сводки и алертов о резкой смене погоды. Реальная частота
+	     запуска на iOS всё равно определяется системой, а не приложением. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>be.tramckrijte.workmanagerExample.iOSBackgroundAppRefresh</string>
+		<string>be.tramckrijte.workmanagerExample.iOSBackgroundProcessing</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
