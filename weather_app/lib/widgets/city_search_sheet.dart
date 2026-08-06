@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
 import '../services/settings_service.dart';
 import '../services/analytics_service.dart';
+import '../services/weather_service.dart';
 
 class CitySearchSheet extends StatefulWidget {
   final Function(String) onCitySelected;
@@ -22,12 +24,67 @@ class CitySearchSheet extends StatefulWidget {
 class _CitySearchSheetState extends State<CitySearchSheet> {
   final TextEditingController _controller = TextEditingController();
   final SettingsService _settings = SettingsService();
+  final WeatherService _weatherService = WeatherService();
   List<String> _favorites = [];
+
+  // Подсказки городов, появляющиеся под полем ввода по мере набора текста.
+  List<CitySuggestion> _suggestions = [];
+  bool _isSearching = false;
+  Timer? _debounce;
+  // Увеличивается на каждый новый запрос — нужно, чтобы устаревший
+  // (медленно ответивший) запрос не перезаписал результат более нового.
+  int _searchRequestId = 0;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    _controller.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.removeListener(_onQueryChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged() {
+    final query = _controller.text.trim();
+    _debounce?.cancel();
+
+    if (query.isEmpty) {
+      setState(() {
+        _suggestions = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    // Debounce — ждём паузу в наборе текста, чтобы не слать запрос на
+    // каждую введённую букву.
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _fetchSuggestions(query);
+    });
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    final requestId = ++_searchRequestId;
+    final langCode = AppLocalizations.of(context).weatherApiLangCode;
+    final results =
+        await _weatherService.searchCities(query, langCode: langCode);
+
+    // Если пользователь успел напечатать что-то ещё, пока ждали ответ —
+    // этот результат уже неактуален, игнорируем его.
+    if (!mounted || requestId != _searchRequestId) return;
+
+    setState(() {
+      _suggestions = results;
+      _isSearching = false;
+    });
   }
 
   Future<void> _loadFavorites() async {
@@ -52,6 +109,76 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
   void _selectCity(String city) {
     widget.onCitySelected(city);
     Navigator.pop(context);
+  }
+
+  void _selectSuggestion(CitySuggestion suggestion) {
+    // Передаём "Город,Страна" — так getWeatherByCityName находит точный
+    // город, а не первый попавшийся с таким именем в другой стране.
+    _selectCity(suggestion.queryString);
+  }
+
+  // Блок с подсказками под полем поиска: спиннер во время загрузки,
+  // список найденных городов, либо сообщение "ничего не найдено".
+  Widget _buildSuggestionsList() {
+    final l10n = AppLocalizations.of(context);
+
+    if (_isSearching) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_suggestions.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Text(
+          l10n.noCitiesFound,
+          style: const TextStyle(color: Colors.white38, fontSize: 13),
+        ),
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 260),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _suggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = _suggestions[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              leading: const Icon(Icons.location_on_outlined,
+                  color: Colors.white54, size: 20),
+              title: Text(
+                suggestion.displayLabel,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              onTap: () => _selectSuggestion(suggestion),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -142,6 +269,13 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
               }
             },
           ),
+          // Список подсказок городов/стран, появляющийся по мере набора
+          // текста. Показывается только пока есть текст в поле поиска —
+          // не мешает избранным городам, когда поле пустое.
+          if (_controller.text.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _buildSuggestionsList(),
+          ],
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () {
