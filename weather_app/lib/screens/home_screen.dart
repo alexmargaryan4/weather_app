@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
@@ -434,53 +435,80 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Высота системного статус-бара (время/батарея/индикаторы) — контент
+    // теперь физически скроллится под эту зону (не обрезается SafeArea
+    // сверху), а поверх неё лежит размытая полупрозрачная панель, поэтому
+    // при скролле текст не "пропадает в пустоте", а виден сквозь блюр,
+    // как в iOS/большинстве нативных приложений.
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1C3F),
       body: SizedBox.expand(
         child: AnimatedWeatherBackground(
           iconCode: _weatherData?.iconCode ?? '01d',
-          child: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity.abs() < 200) return;
-                      if (velocity < 0) {
-                        _switchFavorite(1); // свайп влево -> следующий город
-                      } else {
-                        _switchFavorite(-1); // свайп вправо -> предыдущий город
-                      }
-                    },
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      child: _buildBody(),
+          child: Stack(
+            children: [
+              // Основной контент — начинается от самого верха экрана (под
+              // статус-бар), поэтому при скролле карточки/текст проезжают
+              // под блюр-панелью ниже, а не под "пустым" пространством.
+              SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onHorizontalDragEnd: (details) {
+                          final velocity = details.primaryVelocity ?? 0;
+                          if (velocity.abs() < 200) return;
+                          if (velocity < 0) {
+                            _switchFavorite(1); // свайп влево -> следующий город
+                          } else {
+                            _switchFavorite(-1); // свайп вправо -> предыдущий город
+                          }
+                        },
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          child: _buildBody(statusBarHeight),
+                        ),
+                      ),
                     ),
-                  ),
+                    // Нижняя панель переключения городов — самолётик для
+                    // геолокации и кружок на каждый сохранённый город, как
+                    // страничный индикатор в приложении погоды Apple. Панель
+                    // видна всегда (даже без избранных городов), а город,
+                    // совпадающий с текущим геолокационным, не дублируется
+                    // отдельным кружком — самолётик и так его показывает.
+                    CityPageBar(
+                      currentIndex: _currentPageIndex,
+                      favoriteCities: _favoriteCities,
+                      geoCityName: _weatherService.peekCache('geo')?.cityName,
+                      onSelect: _selectPage,
+                      onRemoveFavorite: _removeFavoriteFromBar,
+                    ),
+                  ],
                 ),
-                // Нижняя панель переключения городов — самолётик для
-                // геолокации и кружок на каждый сохранённый город, как
-                // страничный индикатор в приложении погоды Apple. Панель
-                // видна всегда (даже без избранных городов), а город,
-                // совпадающий с текущим геолокационным, не дублируется
-                // отдельным кружком — самолётик и так его показывает.
-                CityPageBar(
-                  currentIndex: _currentPageIndex,
-                  favoriteCities: _favoriteCities,
-                  geoCityName: _weatherService.peekCache('geo')?.cityName,
-                  onSelect: _selectPage,
-                  onRemoveFavorite: _removeFavoriteFromBar,
-                ),
-              ],
-            ),
+              ),
+              // Размытая полупрозрачная панель поверх статус-бара. Лежит
+              // над скролл-контентом (выше него в Stack), поэтому всё, что
+              // проезжает под ней при скролле, видно приглушённо сквозь
+              // блюр, а не резко обрезается. Positioned явно прибивает её
+              // к верхнему краю на всю ширину, независимо от того, как
+              // именно распределены размеры внутри Stack.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _StatusBarBlur(height: statusBarHeight),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(double statusBarHeight) {
     final l10n = AppLocalizations.of(context);
     if (_isLoading) {
       return const Center(
@@ -543,7 +571,8 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.blueGrey,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: EdgeInsets.fromLTRB(
+            16, statusBarHeight + 12, 16, 20),
         child: Column(
           children: [
             // Верхняя панель с названием города и кнопками действий
@@ -770,6 +799,40 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Размытая полупрозрачная панель поверх системного статус-бара.
+///
+/// Раньше статус-бар просто был пустой зоной над контентом (SafeArea
+/// отступал контент вниз), и при скролле текст/карточки резко "выныривали"
+/// прямо под системными часами/батареей. Теперь контент скроллится под всю
+/// эту зону, а данный виджет лежит поверх неё в Stack и размывает всё, что
+/// проезжает под ним — как статус-бар в iOS и большинстве нативных
+/// Android-приложений.
+class _StatusBarBlur extends StatelessWidget {
+  final double height;
+
+  const _StatusBarBlur({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    if (height <= 0) return const SizedBox.shrink();
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          height: height,
+          width: double.infinity,
+          // Лёгкая заливка поверх блюра — без неё размытие само по себе
+          // выглядит "стеклянным" уже неплохо, но с чуть заметным оттенком
+          // фона приложения панель отделяется от контента чище и не
+          // сливается с ним визуально при светлых участках анимированного
+          // фона (яркое небо/солнце).
+          color: const Color(0xFF0F1C3F).withOpacity(0.25),
         ),
       ),
     );
