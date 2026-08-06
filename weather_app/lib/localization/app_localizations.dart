@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/dashboard_card.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 
@@ -452,6 +453,180 @@ class AppLocalizations {
       'ru': 'Вероятность дождя',
       'hy': 'Անձրևի հավանականություն',
     },
+
+    // --- Кастомизация карточек главного экрана ---
+    'customizeCards': {
+      'en': 'Customize',
+      'ru': 'Настроить',
+      'hy': 'Կարգավորել',
+    },
+    'customizeCardsTitle': {
+      'en': 'Edit Widgets',
+      'ru': 'Изменить виджеты',
+      'hy': 'Խմբագրել վիջեթները',
+    },
+    'customizeCardsSubtitle': {
+      'en': 'Drag to reorder, tap – to remove',
+      'ru': 'Перетащите, чтобы изменить порядок, нажмите –, чтобы убрать',
+      'hy': 'Քաշեք՝ հերթականությունը փոխելու համար',
+    },
+    'customizeCardsAddMore': {
+      'en': 'MORE WIDGETS',
+      'ru': 'ЕЩЁ ВИДЖЕТЫ',
+      'hy': 'ԱՎԵԼԻ ՇԱՏ ՎԻՋԵԹՆԵՐ',
+    },
+    'customizeCardsActive': {
+      'en': 'ACTIVE WIDGETS',
+      'ru': 'АКТИВНЫЕ ВИДЖЕТЫ',
+      'hy': 'ԱԿՏԻՎ ՎԻՋԵԹՆԵՐ',
+    },
+    'customizeCardsDone': {
+      'en': 'Done',
+      'ru': 'Готово',
+      'hy': 'Պատրաստ է',
+    },
+    'customizeCardsReset': {
+      'en': 'Reset',
+      'ru': 'Сбросить',
+      'hy': 'Վերականգնել',
+    },
+    'customizeCardsEmpty': {
+      'en': 'All widgets are hidden. Add some back from the list below.',
+      'ru': 'Все виджеты скрыты. Добавьте что-нибудь из списка ниже.',
+      'hy': 'Բոլոր վիջեթները թաքցված են։',
+    },
+    'cardNameHourlyForecast': {
+      'en': 'Hourly Forecast',
+      'ru': 'Почасовой прогноз',
+      'hy': 'Ժամային կանխատեսում',
+    },
+    'cardNameTemperatureChart': {
+      'en': 'Temperature Chart',
+      'ru': 'График температуры',
+      'hy': 'Ջերմաստիճանի գրաֆիկ',
+    },
+    'cardNamePrecipitation': {
+      'en': 'Precipitation',
+      'ru': 'Осадки',
+      'hy': 'Տեղումներ',
+    },
+    'cardNameDailyForecast': {
+      'en': 'Daily Forecast',
+      'ru': 'Прогноз по дням',
+      'hy': 'Օրական կանխատեսում',
+    },
+    'cardNameSunArc': {
+      'en': 'Sunrise & Sunset',
+      'ru': 'Восход и закат',
+      'hy': 'Արևածագ և մայրամուտ',
+    },
+    'cardNameMoonPhase': {
+      'en': 'Moon Phase',
+      'ru': 'Фаза луны',
+      'hy': 'Լուսնի փուլ',
+    },
+    'cardNameComfortIndex': {
+      'en': 'Comfort Index',
+      'ru': 'Индекс комфорта',
+      'hy': 'Հարմարավետության ինդեքս',
+    },
+    'cardNameAirQuality': {
+      'en': 'Air Quality',
+      'ru': 'Качество воздуха',
+      'hy': 'Օդի որակ',
+    },
+    'cardNameWeatherMaps': {
+      'en': 'Weather Maps',
+      'ru': 'Карты погоды',
+      'hy': 'Եղանակի քարտեզներ',
+    },
+    'cardNameDetails': {
+      'en': 'Wind, Humidity & More',
+      'ru': 'Ветер, влажность и другое',
+      'hy': 'Քամի, խոնավություն և այլն',
+    },
+
+    // --- Уведомления ---
+    'notifications': {
+      'en': 'Notifications',
+      'ru': 'Уведомления',
+      'hy': 'Ծանուցումներ',
+    },
+    'notificationsDailySummary': {
+      'en': 'Daily summary',
+      'ru': 'Ежедневная сводка',
+      'hy': 'Օրական ամփոփում',
+    },
+    'notificationsDailySummarySubtitle': {
+      'en': 'A morning notification with today\'s forecast',
+      'ru': 'Утреннее уведомление с прогнозом на день',
+      'hy': 'Առավոտյան ծանուցում օրվա կանխատեսումով',
+    },
+    'notificationsDailySummaryTime': {
+      'en': 'Time',
+      'ru': 'Время',
+      'hy': 'Ժամանակ',
+    },
+    'notificationsSevereAlerts': {
+      'en': 'Weather alerts',
+      'ru': 'Резкие изменения погоды',
+      'hy': 'Եղանակի զգուշացումներ',
+    },
+    'notificationsSevereAlertsSubtitle': {
+      'en': 'Sudden temperature swings and rain about to start',
+      'ru': 'Резкие скачки температуры и скорый дождь',
+      'hy': 'Ջերմաստիճանի կտրուկ փոփոխություններ',
+    },
+    'notificationsPermissionDenied': {
+      'en': 'Notifications are disabled for this app in system settings',
+      'ru': 'Уведомления отключены для приложения в настройках системы',
+      'hy': 'Ծանուցումներն անջատված են համակարգի կարգավորումներում',
+    },
+    'notificationsOpenSettings': {
+      'en': 'Open settings',
+      'ru': 'Открыть настройки',
+      'hy': 'Բացել կարգավորումները',
+    },
+    'notificationDailyTitle': {
+      'en': 'Weather for today',
+      'ru': 'Погода на сегодня',
+      'hy': 'Այսօրվա եղանակը',
+    },
+    'notificationRainSoonTitle': {
+      'en': 'Rain is coming',
+      'ru': 'Скоро дождь',
+      'hy': 'Անձրև է սպասվում',
+    },
+    'notificationRainSoonBody': {
+      'en': 'Rain expected soon in {city}. Take an umbrella.',
+      'ru': 'В {city} скоро начнётся дождь. Возьмите зонт.',
+      'hy': '{city}-ում շուտով անձրև կսկսվի։',
+    },
+    'notificationTempDropTitle': {
+      'en': 'Temperature dropping',
+      'ru': 'Похолодание',
+      'hy': 'Ցուրտ է սպասվում',
+    },
+    'notificationTempDropBody': {
+      'en': 'It\'s getting noticeably colder in {city}.',
+      'ru': 'В {city} заметно похолодает.',
+      'hy': '{city}-ում զգալիորեն կցրտի։',
+    },
+    'notificationTempRiseTitle': {
+      'en': 'Temperature rising',
+      'ru': 'Потепление',
+      'hy': 'Ջերմություն է սպասվում',
+    },
+    'notificationTempRiseBody': {
+      'en': 'It\'s getting noticeably warmer in {city}.',
+      'ru': 'В {city} заметно потеплеет.',
+      'hy': '{city}-ում զգալիորեն կտաքանա։',
+    },
+    'settingsTitle': {
+      'en': 'Settings',
+      'ru': 'Настройки',
+      'hy': 'Կարգավորումներ',
+    },
   };
 
   String _t(String key) {
@@ -553,6 +728,80 @@ class AppLocalizations {
   String get comfortFactorWind => _t('comfortFactorWind');
   String get comfortFactorUv => _t('comfortFactorUv');
   String get comfortFactorRain => _t('comfortFactorRain');
+
+  // --- Кастомизация карточек главного экрана ---
+  String get customizeCards => _t('customizeCards');
+  String get customizeCardsTitle => _t('customizeCardsTitle');
+  String get customizeCardsSubtitle => _t('customizeCardsSubtitle');
+  String get customizeCardsAddMore => _t('customizeCardsAddMore');
+  String get customizeCardsActive => _t('customizeCardsActive');
+  String get customizeCardsDone => _t('customizeCardsDone');
+  String get customizeCardsReset => _t('customizeCardsReset');
+  String get customizeCardsEmpty => _t('customizeCardsEmpty');
+  String get cardNameHourlyForecast => _t('cardNameHourlyForecast');
+  String get cardNameTemperatureChart => _t('cardNameTemperatureChart');
+  String get cardNamePrecipitation => _t('cardNamePrecipitation');
+  String get cardNameDailyForecast => _t('cardNameDailyForecast');
+  String get cardNameSunArc => _t('cardNameSunArc');
+  String get cardNameMoonPhase => _t('cardNameMoonPhase');
+  String get cardNameComfortIndex => _t('cardNameComfortIndex');
+  String get cardNameAirQuality => _t('cardNameAirQuality');
+  String get cardNameWeatherMaps => _t('cardNameWeatherMaps');
+  String get cardNameDetails => _t('cardNameDetails');
+
+  // Локализованное название карточки по её идентификатору — используется
+  // экраном кастомизации, чтобы не городить switch в UI-коде.
+  String cardDisplayName(DashboardCard card) {
+    switch (card) {
+      case DashboardCard.umbrellaReminder:
+        return umbrellaReminderTitle;
+      case DashboardCard.hourlyForecast:
+        return cardNameHourlyForecast;
+      case DashboardCard.temperatureChart:
+        return cardNameTemperatureChart;
+      case DashboardCard.precipitation:
+        return cardNamePrecipitation;
+      case DashboardCard.dailyForecast:
+        return cardNameDailyForecast;
+      case DashboardCard.sunArc:
+        return cardNameSunArc;
+      case DashboardCard.moonPhase:
+        return cardNameMoonPhase;
+      case DashboardCard.comfortIndex:
+        return cardNameComfortIndex;
+      case DashboardCard.airQuality:
+        return cardNameAirQuality;
+      case DashboardCard.weatherMaps:
+        return cardNameWeatherMaps;
+      case DashboardCard.details:
+        return cardNameDetails;
+    }
+  }
+
+  // --- Уведомления ---
+  String get notifications => _t('notifications');
+  String get notificationsDailySummary => _t('notificationsDailySummary');
+  String get notificationsDailySummarySubtitle =>
+      _t('notificationsDailySummarySubtitle');
+  String get notificationsDailySummaryTime =>
+      _t('notificationsDailySummaryTime');
+  String get notificationsSevereAlerts => _t('notificationsSevereAlerts');
+  String get notificationsSevereAlertsSubtitle =>
+      _t('notificationsSevereAlertsSubtitle');
+  String get notificationsPermissionDenied =>
+      _t('notificationsPermissionDenied');
+  String get notificationsOpenSettings => _t('notificationsOpenSettings');
+  String get notificationDailyTitle => _t('notificationDailyTitle');
+  String get notificationRainSoonTitle => _t('notificationRainSoonTitle');
+  String notificationRainSoonBody(String city) =>
+      _t('notificationRainSoonBody').replaceAll('{city}', city);
+  String get notificationTempDropTitle => _t('notificationTempDropTitle');
+  String notificationTempDropBody(String city) =>
+      _t('notificationTempDropBody').replaceAll('{city}', city);
+  String get notificationTempRiseTitle => _t('notificationTempRiseTitle');
+  String notificationTempRiseBody(String city) =>
+      _t('notificationTempRiseBody').replaceAll('{city}', city);
+  String get settingsTitle => _t('settingsTitle');
 
   // Локализованный ярлык дня недели для DateFormat.E(locale) — используется
   // в daily_forecast.dart, чтобы формат даты тоже уважал выбранный язык.
