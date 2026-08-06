@@ -97,10 +97,34 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Build iOS (release, no codesign)
-        # Виджеты (home_widget) на iOS не настроены (нужен отдельный Widget
-        # Extension target и App Group) — на этом этапе просто собираем
-        # основное приложение без подписи, как обычный .app-бандл.
+        # Основной таргет Runner + Widget Extension таргет (WeatherWidgetExtension)
+        # собираются вместе: расширение подключено как PBXTargetDependency
+        # у Runner, поэтому buildImplicitDependencies в схеме Runner сам
+        # подтягивает и собирает .appex. Отдельная схема для расширения
+        # не нужна и не должна указываться явно.
+        #
+        # ВАЖНО: --no-codesign даёт неподписанный .app/.appex — этого
+        # достаточно, чтобы проверить, что весь граф целей (включая новый
+        # target) компилируется, но реальные entitlements (App Group)
+        # в такую сборку не прописываются. Для установки на устройство
+        # или TestFlight нужна отдельная подписанная сборка
+        # (flutter build ipa --export-options-plist=...) с настроенным
+        # Apple Developer аккаунтом/профилем, который здесь не настраивается.
         run: flutter build ios --release --no-codesign --verbose
+
+      - name: Verify WeatherWidgetExtension was built
+        # Если target расширения не подключился к сборке (например, из-за
+        # поломанного project.pbxproj), Runner.app соберётся, но .appex
+        # внутри PlugIns не появится — сборка Flutter при этом не упадёт,
+        # так что проверяем явно, а не полагаемся на общий success шага выше.
+        run: |
+          set -euo pipefail
+          APPEX_PATH="build/ios/iphoneos/Runner.app/PlugIns/WeatherWidgetExtension.appex"
+          if [ ! -d "$APPEX_PATH" ]; then
+            echo "::error::WeatherWidgetExtension.appex not found in build output — widget target did not build."
+            exit 1
+          fi
+          echo "Found $APPEX_PATH"
 
       - name: Package unsigned IPA
         # flutter build ipa требует настроенную подпись/профиль, поэтому
