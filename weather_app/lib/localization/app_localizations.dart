@@ -265,6 +265,183 @@ class AppLocalizations {
       'ru': 'Моя геолокация',
       'hy': 'Իմ գտնվելու վայրը',
     },
+
+    // --- Фаза луны ---
+    'moonPhase': {
+      'en': 'MOON PHASE',
+      'ru': 'ФАЗА ЛУНЫ',
+      'hy': 'ԼՈՒՍՆԻ ՓՈՒԼԸ',
+    },
+    'moonNew': {
+      'en': 'New Moon',
+      'ru': 'Новолуние',
+      'hy': 'Նորալուսին',
+    },
+    'moonWaxingCrescent': {
+      'en': 'Waxing Crescent',
+      'ru': 'Растущий серп',
+      'hy': 'Աճող մանգաղ',
+    },
+    'moonFirstQuarter': {
+      'en': 'First Quarter',
+      'ru': 'Первая четверть',
+      'hy': 'Առաջին քառորդ',
+    },
+    'moonWaxingGibbous': {
+      'en': 'Waxing Gibbous',
+      'ru': 'Растущая луна',
+      'hy': 'Աճող լուսին',
+    },
+    'moonFull': {
+      'en': 'Full Moon',
+      'ru': 'Полнолуние',
+      'hy': 'Լիալուսին',
+    },
+    'moonWaningGibbous': {
+      'en': 'Waning Gibbous',
+      'ru': 'Убывающая луна',
+      'hy': 'Նվազող լուսին',
+    },
+    'moonLastQuarter': {
+      'en': 'Last Quarter',
+      'ru': 'Последняя четверть',
+      'hy': 'Վերջին քառորդ',
+    },
+    'moonWaningCrescent': {
+      'en': 'Waning Crescent',
+      'ru': 'Убывающий серп',
+      'hy': 'Նվազող մանգաղ',
+    },
+    'moonIllumination': {
+      'en': 'illumination',
+      'ru': 'освещённость',
+      'hy': 'լուսավորվածություն',
+    },
+
+    // --- Вероятность осадков ---
+    'precipitationChance': {
+      'en': 'CHANCE OF RAIN',
+      'ru': 'ВЕРОЯТНОСТЬ ОСАДКОВ',
+      'hy': 'ՏԵՂՈՒՄՆԵՐԻ ՀԱՎԱՆԱԿԱՆՈՒԹՅՈՒՆ',
+    },
+    'precipitationNow': {
+      'en': 'Right now',
+      'ru': 'Прямо сейчас',
+      'hy': 'Հենց հիմա',
+    },
+
+    // --- График температуры ---
+    'temperatureTrend': {
+      'en': 'TEMPERATURE TREND',
+      'ru': 'ИЗМЕНЕНИЕ ТЕМПЕРАТУРЫ',
+      'hy': 'ՋԵՐՄԱՍՏԻՃԱՆԻ ՓՈՓՈԽՈՒԹՅՈՒՆ',
+    },
+
+    // --- Карты погоды ---
+    'weatherMaps': {
+      'en': 'WEATHER MAPS',
+      'ru': 'КАРТЫ ПОГОДЫ',
+      'hy': 'ԵՂԱՆԱԿԻ ՔԱՐՏԵԶՆԵՐ',
+    },
+    'mapPrecipitation': {
+      'en': 'Precipitation',
+      'ru': 'Осадки',
+      'hy': 'Տեղումներ',
+    },
+    'mapWind': {
+      'en': 'Wind',
+      'ru': 'Ветер',
+      'hy': 'Քամի',
+    },
+    'mapStorms': {
+      'en': 'Storms',
+      'ru': 'Грозы',
+      'hy': 'Ամպրոպներ',
+    },
+    'mapTemperature': {
+      'en': 'Temperature',
+      'ru': 'Температура',
+      'hy': 'Ջերմաստիճան',
+    },
+    'mapStormsNote': {
+      'en': 'Storm activity shown via dense cloud cover (no dedicated radar layer on the free tier).',
+      'ru': 'Грозовая активность показана через плотную облачность (отдельного слоя радара на бесплатном тарифе нет).',
+      'hy': 'Ամպրոպային ակտիվությունը ցուցադրված է խիտ ամպամածությամբ (անվճար սակագնի դեպքում առանձին ռադարային շերտ չկա)։',
+    },
+    'openInBrowser': {
+      'en': 'Open full map',
+      'ru': 'Открыть полную карту',
+      'hy': 'Բացել ամբողջական քարտեզը',
+    },
+
+    // --- Напоминание про зонт ---
+    'umbrellaReminderTitle': {
+      'en': 'Take an umbrella',
+      'ru': 'Возьмите зонт',
+      'hy': 'Վերցրեք հովանոց',
+    },
+    'umbrellaReminderBody': {
+      'en': 'High chance of rain today — better take an umbrella with you.',
+      'ru': 'Сегодня высокая вероятность дождя — лучше взять зонт с собой.',
+      'hy': 'Այսօր անձրևի հավանականությունը մեծ է․ ավելի լավ է հովանոց վերցնել։',
+    },
+
+    // --- Индекс комфорта ---
+    'comfortIndex': {
+      'en': 'COMFORT INDEX',
+      'ru': 'ИНДЕКС КОМФОРТА',
+      'hy': 'ՀԱՐՄԱՐԱՎԵՏՈՒԹՅԱՆ ԻՆԴԵՔՍ',
+    },
+    'comfortExcellent': {
+      'en': 'Excellent for a walk',
+      'ru': 'Отлично для прогулки',
+      'hy': 'Հիանալի է զբոսանքի համար',
+    },
+    'comfortGood': {
+      'en': 'Good conditions outside',
+      'ru': 'Хорошие условия на улице',
+      'hy': 'Լավ պայմաններ դրսում',
+    },
+    'comfortModerate': {
+      'en': 'Moderately comfortable',
+      'ru': 'Умеренно комфортно',
+      'hy': 'Չափավոր հարմարավետ',
+    },
+    'comfortPoor': {
+      'en': 'Not very comfortable',
+      'ru': 'Не очень комфортно',
+      'hy': 'Այնքան էլ հարմարավետ չէ',
+    },
+    'comfortBad': {
+      'en': 'Uncomfortable outside',
+      'ru': 'Некомфортно на улице',
+      'hy': 'Անհարմար է դրսում',
+    },
+    'comfortFactorTemp': {
+      'en': 'Temperature',
+      'ru': 'Температура',
+      'hy': 'Ջերմաստիճան',
+    },
+    'comfortFactorHumidity': {
+      'en': 'Humidity',
+      'ru': 'Влажность',
+      'hy': 'Խոնավություն',
+    },
+    'comfortFactorWind': {
+      'en': 'Wind',
+      'ru': 'Ветер',
+      'hy': 'Քամի',
+    },
+    'comfortFactorUv': {
+      'en': 'UV index',
+      'ru': 'УФ-индекс',
+      'hy': 'ՈՒՄ ինդեքս',
+    },
+    'comfortFactorRain': {
+      'en': 'Rain chance',
+      'ru': 'Вероятность дождя',
+      'hy': 'Անձրևի հավանականություն',
+    },
   };
 
   String _t(String key) {
@@ -319,6 +496,51 @@ class AppLocalizations {
   String get pressureUnit => _t('pressureUnit');
   String get visibilityUnit => _t('visibilityUnit');
   String get myLocationTooltip => _t('myLocationTooltip');
+
+  // --- Фаза луны ---
+  String get moonPhase => _t('moonPhase');
+  String get moonNew => _t('moonNew');
+  String get moonWaxingCrescent => _t('moonWaxingCrescent');
+  String get moonFirstQuarter => _t('moonFirstQuarter');
+  String get moonWaxingGibbous => _t('moonWaxingGibbous');
+  String get moonFull => _t('moonFull');
+  String get moonWaningGibbous => _t('moonWaningGibbous');
+  String get moonLastQuarter => _t('moonLastQuarter');
+  String get moonWaningCrescent => _t('moonWaningCrescent');
+  String get moonIllumination => _t('moonIllumination');
+
+  // --- Вероятность осадков ---
+  String get precipitationChance => _t('precipitationChance');
+  String get precipitationNow => _t('precipitationNow');
+
+  // --- График температуры ---
+  String get temperatureTrend => _t('temperatureTrend');
+
+  // --- Карты погоды ---
+  String get weatherMaps => _t('weatherMaps');
+  String get mapPrecipitation => _t('mapPrecipitation');
+  String get mapWind => _t('mapWind');
+  String get mapStorms => _t('mapStorms');
+  String get mapTemperature => _t('mapTemperature');
+  String get mapStormsNote => _t('mapStormsNote');
+  String get openInBrowser => _t('openInBrowser');
+
+  // --- Напоминание про зонт ---
+  String get umbrellaReminderTitle => _t('umbrellaReminderTitle');
+  String get umbrellaReminderBody => _t('umbrellaReminderBody');
+
+  // --- Индекс комфорта ---
+  String get comfortIndex => _t('comfortIndex');
+  String get comfortExcellent => _t('comfortExcellent');
+  String get comfortGood => _t('comfortGood');
+  String get comfortModerate => _t('comfortModerate');
+  String get comfortPoor => _t('comfortPoor');
+  String get comfortBad => _t('comfortBad');
+  String get comfortFactorTemp => _t('comfortFactorTemp');
+  String get comfortFactorHumidity => _t('comfortFactorHumidity');
+  String get comfortFactorWind => _t('comfortFactorWind');
+  String get comfortFactorUv => _t('comfortFactorUv');
+  String get comfortFactorRain => _t('comfortFactorRain');
 
   // Локализованный ярлык дня недели для DateFormat.E(locale) — используется
   // в daily_forecast.dart, чтобы формат даты тоже уважал выбранный язык.
