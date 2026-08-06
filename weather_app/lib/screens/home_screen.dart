@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import '../localization/app_localizations.dart';
+import '../models/dashboard_card.dart';
 import '../models/weather_model.dart';
+import '../services/card_layout_service.dart';
 import '../services/weather_service.dart';
 import '../services/location_service.dart';
+import '../services/notification_service.dart';
+import '../services/notification_settings_service.dart';
 import '../services/settings_service.dart';
 import '../services/analytics_service.dart';
+import '../services/weather_watcher_task.dart';
 import '../services/widget_service.dart';
 import '../utils/temperature_utils.dart';
 import '../widgets/animated_background.dart';
@@ -24,6 +29,8 @@ import '../widgets/temperature_chart.dart';
 import '../widgets/umbrella_reminder_banner.dart';
 import '../widgets/comfort_index_card.dart';
 import '../widgets/weather_maps_section.dart';
+import 'customize_cards_screen.dart';
+import 'notification_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,12 +44,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final LocationService _locationService = LocationService();
   final SettingsService _settingsService = SettingsService();
   final WidgetService _widgetService = WidgetService();
+  final CardLayoutService _cardLayoutService = CardLayoutService();
 
   WeatherData? _weatherData;
   bool _isLoading = true;
   String? _errorMessage;
   bool _useFahrenheit = false;
   List<String> _favoriteCities = [];
+
+  // Порядок и видимость карточек главного экрана, настраиваемые
+  // пользователем на экране "Настроить карточки" (см.
+  // CustomizeCardsScreen) — по образцу Пункта управления iOS. Обновляется
+  // при возврате с этого экрана, а не в реальном времени, так как экран
+  // кастомизации открыт модально поверх главного.
+  List<DashboardCard> _visibleCards = List.of(defaultCardOrder);
 
   // true, если текущие данные на экране получены по геолокации (значок
   // самолётика в нижней панели), а не по названию сохранённого города.
@@ -88,10 +103,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _init() async {
     final useFahrenheit = await _settingsService.getUseFahrenheit();
     final favorites = await _settingsService.getFavoriteCities();
+    final visibleCards = await _cardLayoutService.getVisibleOrder();
     setState(() {
       _useFahrenheit = useFahrenheit;
       _favoriteCities = favorites;
+      _visibleCards = visibleCards;
     });
+
+    // Инициализация уведомлений не должна блокировать показ погоды —
+    // запускается параллельно и синхронизирует фоновую задачу с
+    // сохранёнными настройками уведомлений (важно после переустановки
+    // приложения или обновления, когда задача Workmanager ещё не
+    // зарегистрирована, а настройки уже сохранены с прошлой сессии).
+    unawaited(NotificationService.instance.init());
+    unawaited(WeatherWatcherTask.updateRegistration());
 
     // Если приложение открыто тапом по конкретному городу в виджете —
     // сразу переходим на этот город вместо геолокации по умолчанию.
@@ -409,6 +434,26 @@ class _HomeScreenState extends State<HomeScreen> {
     unawaited(_widgetService.removeCity(city.toLowerCase()));
   }
 
+  Future<void> _openCustomizeCards() async {
+    HapticFeedback.lightImpact();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CustomizeCardsScreen()),
+    );
+    // Экран кастомизации сохраняет изменения сразу при каждом действии
+    // (см. CustomizeCardsScreen), поэтому по возвращении достаточно просто
+    // перечитать актуальный порядок/видимость и перерисовать главный экран.
+    final visibleCards = await _cardLayoutService.getVisibleOrder();
+    if (!mounted) return;
+    setState(() => _visibleCards = visibleCards);
+  }
+
+  void _openNotificationSettings() {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+    );
+  }
+
   void _openCitySearch() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
@@ -620,6 +665,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                Material(
+                  color: Colors.white.withOpacity(0.14),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: _openNotificationSettings,
+                    tooltip: l10n.notifications,
+                    icon: const Icon(Icons.notifications_none_rounded,
+                        color: Colors.white70, size: 20),
+                  ),
+                ),
+                Material(
+                  color: Colors.white.withOpacity(0.14),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: _openCustomizeCards,
+                    tooltip: l10n.customizeCards,
+                    icon: const Icon(Icons.dashboard_customize_outlined,
+                        color: Colors.white70, size: 20),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -659,94 +724,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // Напоминание про зонт — показывается только когда вероятность
-            // дождя в ближайшие часы достаточно высокая, чтобы не мозолить
-            // глаза лишним баннером в солнечную погоду.
+            // Напоминание про зонт всегда идёт первым и не участвует в
+            // настройке карточек (см. nonRemovableCards) — показывается
+            // только когда вероятность дождя в ближайшие часы достаточно
+            // высокая, чтобы не мозолить глаза лишним баннером в солнечную
+            // погоду.
             if (_shouldShowUmbrellaReminder(weather)) ...[
               const UmbrellaReminderBanner(),
               const SizedBox(height: 16),
             ],
 
-            HourlyForecastList(
-                hourly: weather.hourly, useFahrenheit: _useFahrenheit),
-            const SizedBox(height: 16),
-
-            TemperatureChart(
-                hourly: weather.hourly, useFahrenheit: _useFahrenheit),
-            const SizedBox(height: 16),
-
-            PrecipitationCard(
-              currentProbability: weather.precipitationProbability,
-              hourly: weather.hourly,
-            ),
-            const SizedBox(height: 16),
-
-            DailyForecastList(
-                daily: weather.daily, useFahrenheit: _useFahrenheit),
-
-            const SizedBox(height: 16),
-
-            SunArcCard(sunrise: weather.sunrise, sunset: weather.sunset),
-
-            const SizedBox(height: 16),
-
-            MoonPhaseCard(date: DateTime.now()),
-
-            const SizedBox(height: 16),
-
-            ComfortIndexCard(
-              tempCelsius: weather.temp,
-              humidityPercent: weather.humidity,
-              windSpeedMs: weather.windSpeed,
-              uvIndex: weather.uvIndex,
-              precipitationProbability: weather.precipitationProbability,
-            ),
-
-            const SizedBox(height: 16),
-
-            AirQualityCard(aqi: weather.airQualityIndex),
-
-            const SizedBox(height: 16),
-
-            WeatherMapsSection(lat: weather.lat, lon: weather.lon),
-
-            const SizedBox(height: 16),
-
-            // Доп. параметры: ветер, влажность, давление, видимость
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.15,
-              children: [
-                _buildInfoCard(
-                  icon: Icons.air_rounded,
-                  label: l10n.wind,
-                  value: '${weather.windSpeed.round()} ${l10n.windUnit}',
-                ),
-                _buildInfoCard(
-                  icon: Icons.water_drop_outlined,
-                  label: l10n.humidity,
-                  value: '${weather.humidity}%',
-                ),
-                _buildInfoCard(
-                  icon: Icons.speed_rounded,
-                  label: l10n.pressure,
-                  value:
-                      '${(weather.pressure * 0.750062).round()} ${l10n.pressureUnit}',
-                ),
-                _buildInfoCard(
-                  icon: Icons.visibility_outlined,
-                  label: l10n.visibility,
-                  value: weather.visibility != null
-                      ? '${(weather.visibility! / 1000).toStringAsFixed(1)} ${l10n.visibilityUnit}'
-                      : l10n.noData,
-                ),
+            // Остальные карточки рендерятся в порядке, который пользователь
+            // настроил на экране "Настроить карточки" (см.
+            // CustomizeCardsScreen/CardLayoutService) — как виджеты в
+            // Пункте управления iOS: можно скрывать неинтересные и менять
+            // порядок отображения. umbrellaReminder сюда не входит — он
+            // обработан отдельно выше.
+            for (final card in _visibleCards)
+              if (card != DashboardCard.umbrellaReminder) ...[
+                _buildDashboardCard(card, weather),
+                const SizedBox(height: 16),
               ],
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
           ],
         ),
       ),
@@ -762,6 +761,85 @@ class _HomeScreenState extends State<HomeScreen> {
     if ((weather.precipitationProbability ?? 0) >= threshold) return true;
     final nextHours = weather.hourly.take(4);
     return nextHours.any((h) => h.pop >= threshold);
+  }
+
+  // Рендерит одну карточку главного экрана по её идентификатору —
+  // сопоставление между DashboardCard и реальным виджетом. umbrellaReminder
+  // сюда не попадает (обработан отдельно перед циклом в _buildBody), а
+  // details — единственная карточка, которая сама разворачивается в
+  // сетку 2x2 (ветер/влажность/давление/видимость), а не в один виджет.
+  Widget _buildDashboardCard(DashboardCard card, WeatherData weather) {
+    final l10n = AppLocalizations.of(context);
+    switch (card) {
+      case DashboardCard.umbrellaReminder:
+        // Обрабатывается отдельно в _buildBody и никогда сюда не
+        // попадает — см. фильтр в цикле for.
+        return const SizedBox.shrink();
+      case DashboardCard.hourlyForecast:
+        return HourlyForecastList(
+            hourly: weather.hourly, useFahrenheit: _useFahrenheit);
+      case DashboardCard.temperatureChart:
+        return TemperatureChart(
+            hourly: weather.hourly, useFahrenheit: _useFahrenheit);
+      case DashboardCard.precipitation:
+        return PrecipitationCard(
+          currentProbability: weather.precipitationProbability,
+          hourly: weather.hourly,
+        );
+      case DashboardCard.dailyForecast:
+        return DailyForecastList(
+            daily: weather.daily, useFahrenheit: _useFahrenheit);
+      case DashboardCard.sunArc:
+        return SunArcCard(sunrise: weather.sunrise, sunset: weather.sunset);
+      case DashboardCard.moonPhase:
+        return MoonPhaseCard(date: DateTime.now());
+      case DashboardCard.comfortIndex:
+        return ComfortIndexCard(
+          tempCelsius: weather.temp,
+          humidityPercent: weather.humidity,
+          windSpeedMs: weather.windSpeed,
+          uvIndex: weather.uvIndex,
+          precipitationProbability: weather.precipitationProbability,
+        );
+      case DashboardCard.airQuality:
+        return AirQualityCard(aqi: weather.airQualityIndex);
+      case DashboardCard.weatherMaps:
+        return WeatherMapsSection(lat: weather.lat, lon: weather.lon);
+      case DashboardCard.details:
+        return GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.15,
+          children: [
+            _buildInfoCard(
+              icon: Icons.air_rounded,
+              label: l10n.wind,
+              value: '${weather.windSpeed.round()} ${l10n.windUnit}',
+            ),
+            _buildInfoCard(
+              icon: Icons.water_drop_outlined,
+              label: l10n.humidity,
+              value: '${weather.humidity}%',
+            ),
+            _buildInfoCard(
+              icon: Icons.speed_rounded,
+              label: l10n.pressure,
+              value:
+                  '${(weather.pressure * 0.750062).round()} ${l10n.pressureUnit}',
+            ),
+            _buildInfoCard(
+              icon: Icons.visibility_outlined,
+              label: l10n.visibility,
+              value: weather.visibility != null
+                  ? '${(weather.visibility! / 1000).toStringAsFixed(1)} ${l10n.visibilityUnit}'
+                  : l10n.noData,
+            ),
+          ],
+        );
+    }
   }
 
   Widget _buildInfoCard(
