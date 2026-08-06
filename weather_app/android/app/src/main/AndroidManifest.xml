@@ -2,6 +2,25 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Показ уведомлений на Android 13+ (API 33) требует явного разрешения
+         в рантайме — сам запрос делает NotificationService.requestPermission,
+         но объявить разрешение в манифесте обязательно в любом случае. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Точное время ежедневной сводки (zonedSchedule с
+         exactAllowWhileIdle в NotificationService) требует этого разрешения
+         на Android 12+ (API 31+); без него система тихо понижает
+         уведомление до неточного расписания с разбросом в десятки минут. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Требуется Workmanager для периодической фоновой проверки погоды
+         (WeatherWatcherTask) — сама задача уведомлена ограничением
+         networkType: connected. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Позволяет перезапустить периодическую фоновую задачу после
+         перезагрузки устройства — без него Workmanager возобновит её
+         только при следующем открытии приложения. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
