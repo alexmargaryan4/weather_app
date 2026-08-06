@@ -44,39 +44,68 @@ class CityPageBar extends StatelessWidget {
       sigmaX: 4.0,
       sigmaY: 4.0,
     ),
-    child: Container(
+    child: SizedBox(
       height: 72,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.025),
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withOpacity(0.10),
-            width: 0.5,
-          ),
-        ),
-      ),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Верхний блик стекла
+          // Основной стеклянный слой
+          Container(
+            color: Colors.white.withOpacity(0.025),
+          ),
+
+          // Верхний блик (для нижней панели он сверху)
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
+                stops: const [
+                  0.0,
+                  0.15,
+                  0.4,
+                  1.0,
+                ],
                 colors: [
-                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.18),
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.02),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
 
+          // Лёгкая дымка
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.white.withOpacity(0.015),
+                  Colors.transparent,
+                  Colors.white.withOpacity(0.015),
+                ],
+              ),
+            ),
+          ),
+
+          // Верхняя граница (у нижней панели она сверху)
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              height: 0.5,
+              color: Colors.white.withOpacity(0.08),
+            ),
+          ),
+
+          // Контент панели
           Center(
             child: ListView(
-              scrollDirection: Axis.horizontal,
               shrinkWrap: true,
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
                 _GeoDot(
