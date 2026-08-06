@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../localization/app_localizations.dart';
@@ -37,30 +38,70 @@ class CityPageBar extends StatelessWidget {
     // отображался бы сразу двумя значками с одинаковой погодой.
     final geoLower = geoCityName?.toLowerCase();
 
-    return SizedBox(
-      height: 56,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        children: [
-          _GeoDot(
-            selected: currentIndex == 0,
-            onTap: () => onSelect(0),
+    return ClipRect(
+  child: BackdropFilter(
+    filter: ImageFilter.blur(
+      sigmaX: 4.0,
+      sigmaY: 4.0,
+    ),
+    child: Container(
+      height: 72,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.025),
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withOpacity(0.10),
+            width: 0.5,
           ),
-          for (int i = 0; i < favoriteCities.length; i++)
-            if (geoLower == null ||
-                favoriteCities[i].toLowerCase() != geoLower)
-              _CityDot(
-                cityName: favoriteCities[i],
-                selected: currentIndex == i + 1,
-                onTap: () => onSelect(i + 1),
-                onLongPress: () =>
-                    _showCityMenu(context, favoriteCities[i], i + 1),
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Верхний блик стекла
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.transparent,
+                ],
               ),
+            ),
+          ),
+
+          Center(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                _GeoDot(
+                  selected: currentIndex == 0,
+                  onTap: () => onSelect(0),
+                ),
+
+                for (int i = 0; i < favoriteCities.length; i++)
+                  if (geoLower == null ||
+                      favoriteCities[i].toLowerCase() != geoLower)
+                    _CityDot(
+                      cityName: favoriteCities[i],
+                      selected: currentIndex == i + 1,
+                      onTap: () => onSelect(i + 1),
+                      onLongPress: () =>
+                          _showCityMenu(context, favoriteCities[i], i + 1),
+                    ),
+              ],
+            ),
+          ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);}
 
   Future<void> _showCityMenu(
       BuildContext context, String city, int index) async {
@@ -192,10 +233,12 @@ class _DotButtonState extends State<_DotButton> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.selected
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.16),
+                  ? Colors.white.withOpacity(0.85)
+                  : Colors.white.withOpacity(0.10),
                 border: Border.all(
-                  color: Colors.white.withOpacity(widget.selected ? 0 : 0.28),
+                  color: Colors.white.withOpacity(
+                    widget.selected ? 0.0 : 0.18,
+                  ),
                   width: 1,
                 ),
               ),
