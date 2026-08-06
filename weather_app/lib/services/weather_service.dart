@@ -56,6 +56,11 @@ class WeatherService {
   static const String airPollutionUrl =
       'https://api.openweathermap.org/data/2.5/air_pollution';
 
+  // Geocoding API OpenWeatherMap — используется для автодополнения городов
+  // при вводе текста в поиске (подсказки "город, страна" по мере набора).
+  static const String geocodingUrl =
+      'https://api.openweathermap.org/geo/1.0/direct';
+
   // Open-Meteo не требует API-ключа и отдаёт видимость (в метрах) как
   // рассчитанную модельную величину без "потолка" в 10 км, в отличие от
   // OpenWeatherMap, где станции часто просто не измеряют больше 10000 м.
@@ -149,6 +154,30 @@ class WeatherService {
     _cache[key] = _CacheEntry(data, DateTime.now());
   }
 
+  // Подсказки городов по мере набора текста (автодополнение в поиске).
+  // Возвращает пустой список при пустом запросе, ошибке сети и т.п. —
+  // автодополнение не должно ломать экран поиска, оно просто не показывает
+  // подсказки, если что-то пошло не так.
+  Future<List<CitySuggestion>> searchCities(String query,
+      {String langCode = 'ru', int limit = 6}) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+
+    try {
+      final response = await _get(
+          '$geocodingUrl?q=${Uri.encodeComponent(trimmed)}&limit=$limit&appid=$apiKey');
+      if (response.statusCode != 200) return [];
+
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list
+          .map((item) => CitySuggestion.fromJson(
+              item as Map<String, dynamic>, langCode))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   // Индекс качества воздуха (1..5). Возвращает null, если запрос не удался —
   // это второстепенные данные, и без них экран погоды всё равно должен работать.
   Future<int?> _fetchAirQuality(double lat, double lon) async {
@@ -222,4 +251,61 @@ class _CacheEntry {
   final DateTime timestamp;
 
   _CacheEntry(this.data, this.timestamp);
+}
+
+// Один вариант автодополнения города: название, страна (и опционально
+// регион/штат), а также координаты — их можно не использовать напрямую,
+// но они пригодятся, если в будущем понадобится грузить погоду сразу по
+// координатам вместо повторного поиска по имени.
+class CitySuggestion {
+  final String name;
+  final String? state;
+  final String country;
+  final double lat;
+  final double lon;
+
+  CitySuggestion({
+    required this.name,
+    this.state,
+    required this.country,
+    required this.lat,
+    required this.lon,
+  });
+
+  factory CitySuggestion.fromJson(Map<String, dynamic> json, String langCode) {
+    // OpenWeatherMap может вернуть локализованные названия в поле `local_names`
+    // (например local_names.ru) — используем их, если доступны для текущего
+    // языка интерфейса, иначе — базовое `name`.
+    String name = json['name'] as String? ?? '';
+    final localNames = json['local_names'] as Map<String, dynamic>?;
+    if (localNames != null && localNames[langCode] is String) {
+      name = localNames[langCode] as String;
+    }
+
+    return CitySuggestion(
+      name: name,
+      state: json['state'] as String?,
+      country: json['country'] as String? ?? '',
+      lat: (json['lat'] as num).toDouble(),
+      lon: (json['lon'] as num).toDouble(),
+    );
+  }
+
+  // Строка для отображения в списке подсказок: "Город, Регион, Страна"
+  // либо "Город, Страна", если региона нет.
+  String get displayLabel {
+    final parts = <String>[name];
+    if (state != null && state!.isNotEmpty && state != name) {
+      parts.add(state!);
+    }
+    if (country.isNotEmpty) {
+      parts.add(country);
+    }
+    return parts.join(', ');
+  }
+
+  // Строка, которую нужно передать в getWeatherByCityName — город + код
+  // страны даёт более точный результат, чем просто название города.
+  String get queryString =>
+      country.isNotEmpty ? '$name,$country' : name;
 }
