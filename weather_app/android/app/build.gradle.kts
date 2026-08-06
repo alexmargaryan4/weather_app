@@ -12,6 +12,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Требуется flutter_local_notifications/workmanager (используют API,
+        // которые на Android < 13 доступны только через desugaring).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -23,6 +26,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // notification_service.dart планирует точные уведомления через
+        // zonedSchedule — с ростом числа зависимостей (timezone, workmanager,
+        // flutter_local_notifications) метод-счётчик Dex может превысить
+        // лимит 64K на старых minSdk без этого флага.
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -42,4 +50,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Нужна для isCoreLibraryDesugaringEnabled выше.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
