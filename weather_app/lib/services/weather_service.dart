@@ -64,7 +64,9 @@ class WeatherService {
   // Open-Meteo не требует API-ключа и отдаёт видимость (в метрах) как
   // рассчитанную модельную величину без "потолка" в 10 км, в отличие от
   // OpenWeatherMap, где станции часто просто не измеряют больше 10000 м.
-  // Используется ТОЛЬКО для видимости — вся остальная погода по-прежнему
+  // Также используется для текущего УФ-индекса, так как в бесплатном
+  // тарифе OpenWeatherMap отдельного эндпоинта для UV больше нет (только
+  // в платном One Call API 3.0). Вся остальная погода по-прежнему
   // берётся из OpenWeatherMap, как и раньше.
   static const String openMeteoUrl = 'https://api.open-meteo.com/v1/forecast';
 
@@ -86,13 +88,13 @@ class WeatherService {
       _get('$currentWeatherUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
       _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
       _fetchAirQuality(lat, lon),
-      _fetchVisibility(lat, lon),
+      _fetchVisibilityAndUv(lat, lon),
     ]);
 
     final currentResponse = results[0] as http.Response;
     final forecastResponse = results[1] as http.Response;
     final airQuality = results[2] as int?;
-    final visibility = results[3] as int?;
+    final meteoExtra = results[3] as _VisibilityAndUv;
 
     if (currentResponse.statusCode == 200 &&
         forecastResponse.statusCode == 200) {
@@ -100,7 +102,9 @@ class WeatherService {
       final forecastJson = jsonDecode(forecastResponse.body);
       var weather = WeatherData.fromJson(currentJson, forecastJson);
       weather = weather.copyWithAirQuality(airQuality);
-      weather = weather.copyWithVisibility(visibility ?? weather.visibility);
+      weather = weather.copyWithVisibility(
+          meteoExtra.visibility ?? weather.visibility);
+      weather = weather.copyWithUvIndex(meteoExtra.uvIndex);
       _store(cacheKey ?? 'geo', weather);
       _store(weather.cityName.toLowerCase(), weather);
       return weather;
@@ -125,23 +129,25 @@ class WeatherService {
     final lat = (currentJson['coord']['lat'] as num).toDouble();
     final lon = (currentJson['coord']['lon'] as num).toDouble();
 
-    // Прогноз, качество воздуха и видимость друг от друга не зависят —
+    // Прогноз, качество воздуха и видимость/УФ друг от друга не зависят —
     // запускаем их одновременно вместо ожидания по очереди.
     final results = await Future.wait<Object?>([
       _get('$forecastUrl?lat=$lat&lon=$lon&appid=$apiKey&units=metric&lang=$langCode'),
       _fetchAirQuality(lat, lon),
-      _fetchVisibility(lat, lon),
+      _fetchVisibilityAndUv(lat, lon),
     ]);
 
     final forecastResponse = results[0] as http.Response;
     final airQuality = results[1] as int?;
-    final visibility = results[2] as int?;
+    final meteoExtra = results[2] as _VisibilityAndUv;
 
     if (forecastResponse.statusCode == 200) {
       final forecastJson = jsonDecode(forecastResponse.body);
       var weather = WeatherData.fromJson(currentJson, forecastJson);
       weather = weather.copyWithAirQuality(airQuality);
-      weather = weather.copyWithVisibility(visibility ?? weather.visibility);
+      weather = weather.copyWithVisibility(
+          meteoExtra.visibility ?? weather.visibility);
+      weather = weather.copyWithUvIndex(meteoExtra.uvIndex);
       _store(cityName.toLowerCase(), weather);
       _store(weather.cityName.toLowerCase(), weather);
       return weather;
@@ -197,24 +203,30 @@ class WeatherService {
     return null;
   }
 
-  // Видимость (в метрах) от Open-Meteo. Возвращает null при любой ошибке —
-  // в этом случае просто останется значение от OpenWeatherMap (или null),
-  // так что экран погоды никогда не сломается из-за этого запроса.
-  Future<int?> _fetchVisibility(double lat, double lon) async {
+  // Видимость (в метрах) и текущий УФ-индекс от Open-Meteo — одним запросом,
+  // чтобы не делать два похожих обращения к одному и тому же API. Возвращает
+  // null-поля при любой ошибке — оба параметра второстепенные, экран погоды
+  // не должен из-за них падать (для видимости остаётся фолбэк на значение
+  // от OpenWeatherMap, УФ просто не покажется).
+  Future<_VisibilityAndUv> _fetchVisibilityAndUv(double lat, double lon) async {
     try {
       final response = await _get(
-          '$openMeteoUrl?latitude=$lat&longitude=$lon&current=visibility');
+          '$openMeteoUrl?latitude=$lat&longitude=$lon&current=visibility,uv_index');
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        final value = json['current']?['visibility'];
-        if (value != null) {
-          return (value as num).toInt();
-        }
+        final current = json['current'] as Map<String, dynamic>?;
+        final visibilityValue = current?['visibility'];
+        final uvValue = current?['uv_index'];
+        return _VisibilityAndUv(
+          visibility:
+              visibilityValue != null ? (visibilityValue as num).toInt() : null,
+          uvIndex: uvValue != null ? (uvValue as num).toDouble() : null,
+        );
       }
     } catch (_) {
-      // Игнорируем — видимость не критична, фолбэк на OpenWeatherMap ниже
+      // Игнорируем — оба значения второстепенные для экрана погоды.
     }
-    return null;
+    return const _VisibilityAndUv(visibility: null, uvIndex: null);
   }
 
   Future<http.Response> _get(String url) async {
@@ -251,6 +263,14 @@ class _CacheEntry {
   final DateTime timestamp;
 
   _CacheEntry(this.data, this.timestamp);
+}
+
+// Результат одного запроса к Open-Meteo за видимостью и УФ-индексом.
+class _VisibilityAndUv {
+  final int? visibility;
+  final double? uvIndex;
+
+  const _VisibilityAndUv({required this.visibility, required this.uvIndex});
 }
 
 // Один вариант автодополнения города: название, страна (и опционально
