@@ -479,13 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // видна всегда (даже без избранных городов), а город,
                     // совпадающий с текущим геолокационным, не дублируется
                     // отдельным кружком — самолётик и так его показывает.
-                    CityPageBar(
-                      currentIndex: _currentPageIndex,
-                      favoriteCities: _favoriteCities,
-                      geoCityName: _weatherService.peekCache('geo')?.cityName,
-                      onSelect: _selectPage,
-                      onRemoveFavorite: _removeFavoriteFromBar,
-                    ),
+                    
                   ],
                 ),
               ),
@@ -496,11 +490,17 @@ class _HomeScreenState extends State<HomeScreen> {
               // к верхнему краю на всю ширину, независимо от того, как
               // именно распределены размеры внутри Stack.
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _StatusBarBlur(height: statusBarHeight),
-              ),
+  bottom: 0,
+  left: 0,
+  right: 0,
+  child: CityPageBar(
+    currentIndex: _currentPageIndex,
+    favoriteCities: _favoriteCities,
+    geoCityName: _weatherService.peekCache('geo')?.cityName,
+    onSelect: _selectPage,
+    onRemoveFavorite: _removeFavoriteFromBar,
+  ),
+),
             ],
           ),
         ),
