@@ -17,6 +17,12 @@ import '../widgets/city_search_sheet.dart';
 import '../widgets/sun_arc.dart';
 import '../widgets/air_quality_card.dart';
 import '../widgets/city_page_bar.dart';
+import '../widgets/moon_phase_card.dart';
+import '../widgets/precipitation_card.dart';
+import '../widgets/temperature_chart.dart';
+import '../widgets/umbrella_reminder_banner.dart';
+import '../widgets/comfort_index_card.dart';
+import '../widgets/weather_maps_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -617,9 +623,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
+            // Напоминание про зонт — показывается только когда вероятность
+            // дождя в ближайшие часы достаточно высокая, чтобы не мозолить
+            // глаза лишним баннером в солнечную погоду.
+            if (_shouldShowUmbrellaReminder(weather)) ...[
+              const UmbrellaReminderBanner(),
+              const SizedBox(height: 16),
+            ],
+
             HourlyForecastList(
                 hourly: weather.hourly, useFahrenheit: _useFahrenheit),
             const SizedBox(height: 16),
+
+            TemperatureChart(
+                hourly: weather.hourly, useFahrenheit: _useFahrenheit),
+            const SizedBox(height: 16),
+
+            PrecipitationCard(
+              currentProbability: weather.precipitationProbability,
+              hourly: weather.hourly,
+            ),
+            const SizedBox(height: 16),
+
             DailyForecastList(
                 daily: weather.daily, useFahrenheit: _useFahrenheit),
 
@@ -629,7 +654,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
+            MoonPhaseCard(date: DateTime.now()),
+
+            const SizedBox(height: 16),
+
+            ComfortIndexCard(
+              tempCelsius: weather.temp,
+              humidityPercent: weather.humidity,
+              windSpeedMs: weather.windSpeed,
+              uvIndex: weather.uvIndex,
+              precipitationProbability: weather.precipitationProbability,
+            ),
+
+            const SizedBox(height: 16),
+
             AirQualityCard(aqi: weather.airQualityIndex),
+
+            const SizedBox(height: 16),
+
+            WeatherMapsSection(lat: weather.lat, lon: weather.lon),
 
             const SizedBox(height: 16),
 
@@ -672,6 +715,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  // Показывать баннер "возьмите зонт", если вероятность осадков прямо
+  // сейчас высокая, либо она станет высокой в ближайшие несколько часов —
+  // человеку нужно предупреждение до выхода из дома, а не только когда
+  // дождь уже идёт.
+  bool _shouldShowUmbrellaReminder(WeatherData weather) {
+    const threshold = 0.4;
+    if ((weather.precipitationProbability ?? 0) >= threshold) return true;
+    final nextHours = weather.hourly.take(4);
+    return nextHours.any((h) => h.pop >= threshold);
   }
 
   Widget _buildInfoCard(
