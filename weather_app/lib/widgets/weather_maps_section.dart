@@ -20,9 +20,12 @@ class WeatherMapsSection extends StatefulWidget {
 class _WeatherMapsSectionState extends State<WeatherMapsSection> {
   WeatherMapLayer _selectedLayer = WeatherMapLayer.precipitation;
 
-  // Зум 8 даёт разумный баланс между детализацией и охватом области вокруг
-  // города на квадрате 3x3 тайла.
-  static const int _zoom = 8;
+  // Зум 10 даёт разумный баланс между детализацией и охватом области вокруг
+  // города на квадрате 3x3 тайла. Поднят с 8 до 10: при зуме 8 каждый тайл
+  // 256x256 растягивался на весь экран (особенно на HiDPI-экранах), из-за
+  // чего карта выглядела мутной/заблюренной. На зуме 10 тайлы плотнее
+  // покрывают ту же физическую область экрана, и апскейл почти не заметен.
+  static const int _zoom = 10;
 
   String _labelFor(WeatherMapLayer layer, AppLocalizations l10n) {
     switch (layer) {
@@ -228,6 +231,11 @@ class _MapTile extends StatelessWidget {
         Image.network(
           url,
           fit: BoxFit.cover,
+          // По умолчанию Flutter рисует Image.network с FilterQuality.low,
+          // что при увеличении растрового тайла на весь экран даёт заметное
+          // размытие. FilterQuality.high использует бикубическую
+          // интерполяцию — картинка выглядит значительно чётче.
+          filterQuality: FilterQuality.high,
           loadingBuilder: (context, child, progress) {
             if (progress == null) return child;
             return Container(
