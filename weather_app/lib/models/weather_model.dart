@@ -19,6 +19,13 @@ class WeatherData {
   final List<DailyForecast> daily;
   // Индекс качества воздуха (1 = отлично ... 5 = очень плохо), null пока не загружен
   final int? airQualityIndex;
+  // Текущий УФ-индекс (0..11+), null пока не загружен. Приходит от Open-Meteo,
+  // так как в бесплатном тарифе OpenWeatherMap UV-индекса больше нет.
+  final double? uvIndex;
+  // Вероятность осадков "прямо сейчас" (0.0..1.0) — берётся из ближайшей
+  // точки почасового прогноза OpenWeatherMap (поле pop). Используется для
+  // напоминания про зонт и индекса комфорта.
+  final double? precipitationProbability;
 
   WeatherData({
     required this.cityName,
@@ -38,6 +45,8 @@ class WeatherData {
     required this.hourly,
     required this.daily,
     this.airQualityIndex,
+    this.uvIndex,
+    this.precipitationProbability,
   });
 
   // Возвращает копию с обновлённым индексом качества воздуха
@@ -60,6 +69,8 @@ class WeatherData {
       hourly: hourly,
       daily: daily,
       airQualityIndex: aqi,
+      uvIndex: uvIndex,
+      precipitationProbability: precipitationProbability,
     );
   }
 
@@ -84,6 +95,34 @@ class WeatherData {
       hourly: hourly,
       daily: daily,
       airQualityIndex: airQualityIndex,
+      uvIndex: uvIndex,
+      precipitationProbability: precipitationProbability,
+    );
+  }
+
+  // Возвращает копию с обновлённым УФ-индексом (приходит отдельным запросом
+  // к Open-Meteo — см. WeatherService._fetchVisibilityAndUv).
+  WeatherData copyWithUvIndex(double? newUvIndex) {
+    return WeatherData(
+      cityName: cityName,
+      countryCode: countryCode,
+      lat: lat,
+      lon: lon,
+      temp: temp,
+      feelsLike: feelsLike,
+      description: description,
+      iconCode: iconCode,
+      windSpeed: windSpeed,
+      humidity: humidity,
+      pressure: pressure,
+      visibility: visibility,
+      sunrise: sunrise,
+      sunset: sunset,
+      hourly: hourly,
+      daily: daily,
+      airQualityIndex: airQualityIndex,
+      uvIndex: newUvIndex,
+      precipitationProbability: precipitationProbability,
     );
   }
 
@@ -122,14 +161,29 @@ class WeatherData {
         return (aHour - 12).abs() < (bHour - 12).abs() ? a : b;
       });
 
+      // Вероятность осадков за день — берём максимум по всем 3-часовым
+      // точкам этого дня (а не среднее), т.к. пользователю важнее знать
+      // "будет ли дождь хоть когда-то за день", а не усреднённое число.
+      double maxPop = items
+          .map((e) => (e['pop'] as num?)?.toDouble() ?? 0.0)
+          .fold(0.0, (a, b) => a > b ? a : b);
+
       return DailyForecast(
         date: DateTime.fromMillisecondsSinceEpoch(items.first['dt'] * 1000),
         tempMax: maxTemp,
         tempMin: minTemp,
         iconCode: midDayItem['weather'][0]['icon'],
         description: midDayItem['weather'][0]['description'],
+        pop: maxPop,
       );
     }).take(5).toList();
+
+    // Вероятность осадков "сейчас" — берём из первой (ближайшей) точки
+    // почасового прогноза, т.к. текущая погода (currentJson) этого поля
+    // не содержит вовсе.
+    final double? currentPop = list.isNotEmpty
+        ? (list.first['pop'] as num?)?.toDouble()
+        : null;
 
     return WeatherData(
       cityName: currentJson['name'],
@@ -150,6 +204,7 @@ class WeatherData {
           ((currentJson['sys']?['sunset'] ?? 0) as int) * 1000),
       hourly: hourlyList,
       daily: dailyList,
+      precipitationProbability: currentPop,
     );
   }
 }
@@ -158,11 +213,14 @@ class HourlyForecast {
   final DateTime time;
   final double temp;
   final String iconCode;
+  // Вероятность осадков в этот час (0.0..1.0), из поля pop OpenWeatherMap.
+  final double pop;
 
   HourlyForecast({
     required this.time,
     required this.temp,
     required this.iconCode,
+    this.pop = 0.0,
   });
 
   factory HourlyForecast.fromJson(Map<String, dynamic> json) {
@@ -170,6 +228,7 @@ class HourlyForecast {
       time: DateTime.fromMillisecondsSinceEpoch(json['dt'] * 1000),
       temp: (json['main']['temp'] as num).toDouble(),
       iconCode: json['weather'][0]['icon'],
+      pop: (json['pop'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -180,6 +239,8 @@ class DailyForecast {
   final double tempMin;
   final String iconCode;
   final String description;
+  // Максимальная вероятность осадков за день (0.0..1.0).
+  final double pop;
 
   DailyForecast({
     required this.date,
@@ -187,5 +248,6 @@ class DailyForecast {
     required this.tempMin,
     required this.iconCode,
     required this.description,
+    this.pop = 0.0,
   });
 }
