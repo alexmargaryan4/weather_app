@@ -823,7 +823,7 @@ class _StatusBarBlur extends StatelessWidget {
     if (height <= 0) return const SizedBox.shrink();
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           height: height,
           width: double.infinity,
@@ -832,7 +832,7 @@ class _StatusBarBlur extends StatelessWidget {
           // фона приложения панель отделяется от контента чище и не
           // сливается с ним визуально при светлых участках анимированного
           // фона (яркое небо/солнце).
-          color: const Color(0xFF0F1C3F).withOpacity(0.25),
+          color: const Color(0xFF0F1C3F).withOpacity(0.1),
         ),
       ),
     );
