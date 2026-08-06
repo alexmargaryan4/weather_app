@@ -65,9 +65,10 @@ dev_dependencies:
 # по краям для Android — система сама вырежет форму).
 flutter_launcher_icons:
   android: "ic_launcher"
-  ios: false
+  ios: true
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
+  remove_alpha_ios: true
 
 # The following section is specific to Flutter packages.
 flutter:
