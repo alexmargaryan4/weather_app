@@ -45,7 +45,7 @@ class CityPageBar extends StatelessWidget {
       sigmaY: 4.0,
     ),
     child: SizedBox(
-      height: 72,
+      height: 64,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
