@@ -490,17 +490,24 @@ class _HomeScreenState extends State<HomeScreen> {
               // к верхнему краю на всю ширину, независимо от того, как
               // именно распределены размеры внутри Stack.
               Positioned(
-  bottom: 0,
-  left: 0,
-  right: 0,
-  child: CityPageBar(
-    currentIndex: _currentPageIndex,
-    favoriteCities: _favoriteCities,
-    geoCityName: _weatherService.peekCache('geo')?.cityName,
-    onSelect: _selectPage,
-    onRemoveFavorite: _removeFavoriteFromBar,
-  ),
-),
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: CityPageBar(
+        currentIndex: _currentPageIndex,
+        favoriteCities: _favoriteCities,
+        geoCityName: _weatherService.peekCache('geo')?.cityName,
+        onSelect: _selectPage,
+        onRemoveFavorite: _removeFavoriteFromBar,
+      ),
+    ),
+
+    Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: _StatusBarBlur(height: statusBarHeight),
+      ),
             ],
           ),
         ),
