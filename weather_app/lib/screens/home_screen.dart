@@ -816,23 +816,107 @@ class _HomeScreenState extends State<HomeScreen> {
 class _StatusBarBlur extends StatelessWidget {
   final double height;
 
-  const _StatusBarBlur({required this.height});
+  const _StatusBarBlur({
+    required this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (height <= 0) return const SizedBox.shrink();
+    if (height <= 0) {
+      return const SizedBox.shrink();
+    }
+
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
+        filter: ImageFilter.blur(
+          sigmaX: 4.0,
+          sigmaY: 4.0,
+        ),
+        child: SizedBox(
           height: height,
           width: double.infinity,
-          // Лёгкая заливка поверх блюра — без неё размытие само по себе
-          // выглядит "стеклянным" уже неплохо, но с чуть заметным оттенком
-          // фона приложения панель отделяется от контента чище и не
-          // сливается с ним визуально при светлых участках анимированного
-          // фона (яркое небо/солнце).
-          color: const Color(0xFF0F1C3F).withOpacity(0.1),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Основной стеклянный слой
+              Container(
+                color: Colors.white.withOpacity(0.025),
+              ),
+
+              // Верхний блик
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [
+                      0.0,
+                      0.15,
+                      0.4,
+                      1.0,
+                    ],
+                    colors: [
+                      Colors.white.withOpacity(0.18),
+                      Colors.white.withOpacity(0.08),
+                      Colors.white.withOpacity(0.02),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+
+              // Лёгкая дымка
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.white.withOpacity(0.015),
+                      Colors.transparent,
+                      Colors.white.withOpacity(0.015),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Нижнее затемнение
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.025),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Нижняя граница
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  height: 0.5,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+
+              // Верхний внутренний блик
+              Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  height: 1,
+                  color: Colors.white.withOpacity(0.15),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
