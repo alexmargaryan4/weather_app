@@ -19,6 +19,7 @@ class GlassPanel extends StatelessWidget {
   final BorderRadius borderRadius;
   final bool topHighlight;
   final bool bottomHighlight;
+  final bool animated;
 
   const GlassPanel({
     super.key,
@@ -27,15 +28,14 @@ class GlassPanel extends StatelessWidget {
     this.borderRadius = BorderRadius.zero,
     this.topHighlight = false,
     this.bottomHighlight = false,
+    this.animated = false,
   });
 
 
   @override
   Widget build(BuildContext context) {
 
-    return AnimatedGlassOverlay(
-
-  child: ClipRRect(
+    final Widget panel = ClipRRect(
     borderRadius: borderRadius,
 
       child: BackdropFilter(
@@ -308,7 +308,8 @@ class GlassPanel extends StatelessWidget {
 
 
               // Внутренняя тень снизу
-              Align(
+              if (bottomHighlight)
+                Align(
 
                 alignment:
                     Alignment.bottomCenter,
@@ -354,9 +355,11 @@ class GlassPanel extends StatelessWidget {
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+
+    if (!animated) return panel;
+    return AnimatedGlassOverlay(child: panel);
+  }
 }
 
 class GlassNoisePainter extends CustomPainter {
@@ -463,6 +466,7 @@ class GlassStatusBar extends StatelessWidget
       bottomHighlight:
           true,
 
+      animated: true,
 
 
       child: Padding(
