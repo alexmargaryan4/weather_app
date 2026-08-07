@@ -4,6 +4,7 @@ import '../localization/app_localizations.dart';
 import '../services/notification_service.dart';
 import '../services/notification_settings_service.dart';
 import '../services/weather_watcher_task.dart';
+import '../widgets/glass_panel.dart';
 
 /// Экран настроек уведомлений: ежедневная утренняя сводка (со временем
 /// отправки) и алерты о резких изменениях погоды (дождь/скачок температуры).
@@ -135,71 +136,85 @@ class _NotificationSettingsScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final topInset = statusBarHeight + GlassStatusBar.toolbarHeight;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1C3F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          l10n.notifications,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      extendBodyBehindAppBar: true,
+      appBar: GlassStatusBar(
+        title: l10n.notifications,
+        leading: _GlassBackButton(onTap: () => Navigator.of(context).pop()),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                children: [
-                  if (_systemPermissionGranted == false)
-                    _PermissionWarningBanner(
-                      text: l10n.notificationsPermissionDenied,
-                      actionText: l10n.notificationsOpenSettings,
-                      onTap: () async {
-                        final granted =
-                            await NotificationService.instance.requestPermission();
-                        if (!mounted) return;
-                        setState(() => _systemPermissionGranted = granted);
-                      },
+          : ListView(
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 32),
+              children: [
+                if (_systemPermissionGranted == false)
+                  _PermissionWarningBanner(
+                    text: l10n.notificationsPermissionDenied,
+                    actionText: l10n.notificationsOpenSettings,
+                    onTap: () async {
+                      final granted =
+                          await NotificationService.instance.requestPermission();
+                      if (!mounted) return;
+                      setState(() => _systemPermissionGranted = granted);
+                    },
+                  ),
+                const SizedBox(height: 12),
+                _SettingsGroup(
+                  children: [
+                    _SwitchRow(
+                      title: l10n.notificationsDailySummary,
+                      subtitle: l10n.notificationsDailySummarySubtitle,
+                      value: _dailyEnabled,
+                      onChanged: _toggleDaily,
                     ),
-                  const SizedBox(height: 12),
-                  _SettingsGroup(
-                    children: [
-                      _SwitchRow(
-                        title: l10n.notificationsDailySummary,
-                        subtitle: l10n.notificationsDailySummarySubtitle,
-                        value: _dailyEnabled,
-                        onChanged: _toggleDaily,
-                      ),
-                      if (_dailyEnabled) ...[
-                        const _Divider(),
-                        _NavigationRow(
-                          title: l10n.notificationsDailySummaryTime,
-                          value: _formatTime(_dailyTime),
-                          onTap: _pickTime,
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _SettingsGroup(
-                    children: [
-                      _SwitchRow(
-                        title: l10n.notificationsSevereAlerts,
-                        subtitle: l10n.notificationsSevereAlertsSubtitle,
-                        value: _severeEnabled,
-                        onChanged: _toggleSevere,
+                    if (_dailyEnabled) ...[
+                      const _Divider(),
+                      _NavigationRow(
+                        title: l10n.notificationsDailySummaryTime,
+                        value: _formatTime(_dailyTime),
+                        onTap: _pickTime,
                       ),
                     ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _SettingsGroup(
+                  children: [
+                    _SwitchRow(
+                      title: l10n.notificationsSevereAlerts,
+                      subtitle: l10n.notificationsSevereAlertsSubtitle,
+                      value: _severeEnabled,
+                      onChanged: _toggleSevere,
+                    ),
+                  ],
+                ),
+              ],
             ),
+    );
+  }
+}
+
+/// Круглая стеклянная кнопка "назад" в шапке — тот же стиль, что и кнопки
+/// действий на главном экране (полупрозрачная заливка, без отдельного
+/// блюра — блюр уже даёт GlassStatusBar под ней).
+class _GlassBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _GlassBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withOpacity(0.14),
+      shape: const CircleBorder(),
+      child: IconButton(
+        onPressed: onTap,
+        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+            color: Colors.white70, size: 18),
+      ),
     );
   }
 }

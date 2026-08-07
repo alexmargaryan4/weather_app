@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../localization/app_localizations.dart';
 import '../models/dashboard_card.dart';
 import '../services/card_layout_service.dart';
+import '../widgets/glass_panel.dart';
 
 /// Экран редактирования набора карточек главного экрана — по образцу
 /// "Пункта управления" на iOS: активные виджеты показаны сеткой сверху,
@@ -89,20 +90,14 @@ class _CustomizeCardsScreenState extends State<CustomizeCardsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final topInset = statusBarHeight + GlassStatusBar.toolbarHeight;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1C3F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          l10n.customizeCardsTitle,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      extendBodyBehindAppBar: true,
+      appBar: GlassStatusBar(
+        title: l10n.customizeCardsTitle,
         leading: TextButton(
           onPressed: _reset,
           child: Text(
@@ -127,47 +122,45 @@ class _CustomizeCardsScreenState extends State<CustomizeCardsScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: Colors.white))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                children: [
-                  Text(
-                    l10n.customizeCardsSubtitle,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 13,
-                    ),
+          : ListView(
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 32),
+              children: [
+                Text(
+                  l10n.customizeCardsSubtitle,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
                   ),
-                  const SizedBox(height: 16),
-                  _SectionLabel(text: l10n.customizeCardsActive),
+                ),
+                const SizedBox(height: 16),
+                _SectionLabel(text: l10n.customizeCardsActive),
+                const SizedBox(height: 10),
+                if (_activeCards.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      l10n.customizeCardsEmpty,
+                      textAlign: TextAlign.center,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 14),
+                    ),
+                  )
+                else
+                  _ReorderableCardGrid(
+                    cards: _activeCards,
+                    onReorder: _reorderActive,
+                    onRemove: _removeCard,
+                  ),
+                if (_hiddenCards.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  _SectionLabel(text: l10n.customizeCardsAddMore),
                   const SizedBox(height: 10),
-                  if (_activeCards.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        l10n.customizeCardsEmpty,
-                        textAlign: TextAlign.center,
-                        style:
-                            const TextStyle(color: Colors.white38, fontSize: 14),
-                      ),
-                    )
-                  else
-                    _ReorderableCardGrid(
-                      cards: _activeCards,
-                      onReorder: _reorderActive,
-                      onRemove: _removeCard,
-                    ),
-                  if (_hiddenCards.isNotEmpty) ...[
-                    const SizedBox(height: 28),
-                    _SectionLabel(text: l10n.customizeCardsAddMore),
-                    const SizedBox(height: 10),
-                    _StaticCardGrid(
-                      cards: _hiddenCards,
-                      onAdd: _addCard,
-                    ),
-                  ],
+                  _StaticCardGrid(
+                    cards: _hiddenCards,
+                    onAdd: _addCard,
+                  ),
                 ],
-              ),
+              ],
             ),
     );
   }

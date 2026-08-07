@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
@@ -28,6 +27,7 @@ import '../widgets/precipitation_card.dart';
 import '../widgets/temperature_chart.dart';
 import '../widgets/umbrella_reminder_banner.dart';
 import '../widgets/comfort_index_card.dart';
+import '../widgets/glass_panel.dart';
 import '../widgets/weather_maps_section.dart';
 import 'customize_cards_screen.dart';
 import 'notification_settings_screen.dart';
@@ -627,65 +627,29 @@ class _HomeScreenState extends State<HomeScreen> {
             16, statusBarHeight + 12, 16, 20),
         child: Column(
           children: [
-            // Верхняя панель с названием города и кнопками действий
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  weather.cityName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Material(
-                  color: Colors.white.withOpacity(0.14),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    onPressed: _openCitySearch,
-                    icon: const Icon(Icons.add_location_alt_outlined,
-                        color: Colors.white70, size: 20),
-                  ),
-                ),
-                Material(
-                  color: Colors.white.withOpacity(0.14),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    onPressed: _toggleUnits,
-                    tooltip: l10n.unitsTooltip,
-                    icon: Text(
-                      _useFahrenheit ? '°F' : '°C',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                Material(
-                  color: Colors.white.withOpacity(0.14),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    onPressed: _openNotificationSettings,
-                    tooltip: l10n.notifications,
-                    icon: const Icon(Icons.notifications_none_rounded,
-                        color: Colors.white70, size: 20),
-                  ),
-                ),
-                Material(
-                  color: Colors.white.withOpacity(0.14),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    onPressed: _openCustomizeCards,
-                    tooltip: l10n.customizeCards,
-                    icon: const Icon(Icons.dashboard_customize_outlined,
-                        color: Colors.white70, size: 20),
-                  ),
-                ),
-              ],
+            // Верхняя панель: название города, а под ним — компактная
+            // стеклянная капсула с кнопками действий (единый стиль со
+            // статус-баром и нижней панелью городов, кнопки разделены
+            // тонкими границами, чтобы не "слипались").
+            Text(
+              weather.cityName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _TopActionsBar(
+              onSearch: _openCitySearch,
+              onToggleUnits: _toggleUnits,
+              unitsLabel: _useFahrenheit ? '°F' : '°C',
+              unitsTooltip: l10n.unitsTooltip,
+              onNotifications: _openNotificationSettings,
+              notificationsTooltip: l10n.notifications,
+              onCustomizeCards: _openCustomizeCards,
+              customizeCardsTooltip: l10n.customizeCards,
             ),
             const SizedBox(height: 8),
 
@@ -911,100 +875,154 @@ class _StatusBarBlur extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 4.0,
-          sigmaY: 4.0,
-        ),
-        child: SizedBox(
-          height: height,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
+    return GlassPanel(
+      height: height,
+      topHighlight: false,
+      bottomHighlight: true,
+      child: const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Компактная стеклянная капсула с кнопками действий верхней панели:
+/// поиск города, переключение единиц измерения, уведомления, настройка
+/// карточек. Раньше это были четыре отдельных полупрозрачных кружка
+/// впритык друг к другу — визуально сливались в одно пятно. Теперь это
+/// один "стеклянный" элемент (тот же материал, что у статус-бара и нижней
+/// панели городов) со тонкими разделителями между иконками — компактно,
+/// но каждая кнопка читается отдельно.
+class _TopActionsBar extends StatelessWidget {
+  final VoidCallback onSearch;
+  final VoidCallback onToggleUnits;
+  final String unitsLabel;
+  final String unitsTooltip;
+  final VoidCallback onNotifications;
+  final String notificationsTooltip;
+  final VoidCallback onCustomizeCards;
+  final String customizeCardsTooltip;
+
+  const _TopActionsBar({
+    required this.onSearch,
+    required this.onToggleUnits,
+    required this.unitsLabel,
+    required this.unitsTooltip,
+    required this.onNotifications,
+    required this.notificationsTooltip,
+    required this.onCustomizeCards,
+    required this.customizeCardsTooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: GlassPanel(
+        height: 44,
+        borderRadius: BorderRadius.circular(22),
+        topHighlight: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Основной стеклянный слой
-              Container(
-                color: Colors.white.withOpacity(0.025),
+              _TopActionButton(
+                tooltip: null,
+                onTap: onSearch,
+                child: const Icon(Icons.add_location_alt_outlined,
+                    color: Colors.white70, size: 20),
               ),
-
-              // Верхний блик
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [
-                      0.0,
-                      0.15,
-                      0.4,
-                      1.0,
-                    ],
-                    colors: [
-                      Colors.white.withOpacity(0.18),
-                      Colors.white.withOpacity(0.08),
-                      Colors.white.withOpacity(0.02),
-                      Colors.transparent,
-                    ],
+              const _ActionDivider(),
+              _TopActionButton(
+                tooltip: unitsTooltip,
+                onTap: onToggleUnits,
+                child: Text(
+                  unitsLabel,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
               ),
-
-              // Лёгкая дымка
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.white.withOpacity(0.015),
-                      Colors.transparent,
-                      Colors.white.withOpacity(0.015),
-                    ],
-                  ),
-                ),
+              const _ActionDivider(),
+              _TopActionButton(
+                tooltip: notificationsTooltip,
+                onTap: onNotifications,
+                child: const Icon(Icons.notifications_none_rounded,
+                    color: Colors.white70, size: 20),
               ),
-
-              // Нижнее затемнение
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.025),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Нижняя граница
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  height: 0.5,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-              ),
-
-              // Верхний внутренний блик
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.15),
-                ),
+              const _ActionDivider(),
+              _TopActionButton(
+                tooltip: customizeCardsTooltip,
+                onTap: onCustomizeCards,
+                child: const Icon(Icons.dashboard_customize_outlined,
+                    color: Colors.white70, size: 20),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+/// Тонкий вертикальный разделитель между кнопками панели — не даёт
+/// иконкам визуально "слипаться" друг с другом внутри общей капсулы.
+class _ActionDivider extends StatelessWidget {
+  const _ActionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 20,
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      color: Colors.white.withOpacity(0.14),
+    );
+  }
+}
+
+/// Одна кнопка внутри стеклянной капсулы верхней панели — квадратная зона
+/// нажатия без собственного фона (фон уже даёт общая капсула), с лёгким
+/// откликом на тап.
+class _TopActionButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final String? tooltip;
+  final Widget child;
+
+  const _TopActionButton({
+    required this.onTap,
+    required this.child,
+    this.tooltip,
+  });
+
+  @override
+  State<_TopActionButton> createState() => _TopActionButtonState();
+}
+
+class _TopActionButtonState extends State<_TopActionButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.88 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(child: widget.child),
+        ),
+      ),
+    );
+
+    if (widget.tooltip == null) return button;
+    return Tooltip(message: widget.tooltip!, child: button);
   }
 }
 
