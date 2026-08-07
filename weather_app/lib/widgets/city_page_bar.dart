@@ -1,7 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../localization/app_localizations.dart';
+import 'glass_panel.dart';
 
 /// Нижняя панель переключения городов — как страничный индикатор в
 /// приложении погоды Apple: слева самолётик (город по геолокации),
@@ -38,99 +38,35 @@ class CityPageBar extends StatelessWidget {
     // отображался бы сразу двумя значками с одинаковой погодой.
     final geoLower = geoCityName?.toLowerCase();
 
-    return ClipRect(
-  child: BackdropFilter(
-    filter: ImageFilter.blur(
-      sigmaX: 4.0,
-      sigmaY: 4.0,
-    ),
-    child: SizedBox(
+    return GlassPanel(
       height: 64,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Основной стеклянный слой
-          Container(
-            color: Colors.white.withOpacity(0.025),
-          ),
-
-          // Верхний блик (для нижней панели он сверху)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [
-                  0.0,
-                  0.15,
-                  0.4,
-                  1.0,
-                ],
-                colors: [
-                  Colors.white.withOpacity(0.18),
-                  Colors.white.withOpacity(0.08),
-                  Colors.white.withOpacity(0.02),
-                  Colors.transparent,
-                ],
-              ),
+      topHighlight: true,
+      child: Center(
+        child: ListView(
+          shrinkWrap: true,
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          children: [
+            _GeoDot(
+              selected: currentIndex == 0,
+              onTap: () => onSelect(0),
             ),
-          ),
 
-          // Лёгкая дымка
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.white.withOpacity(0.015),
-                  Colors.transparent,
-                  Colors.white.withOpacity(0.015),
-                ],
-              ),
-            ),
-          ),
-
-          // Верхняя граница (у нижней панели она сверху)
-          Align(
-            alignment: Alignment.topCenter,
-            child: Container(
-              height: 0.5,
-              color: Colors.white.withOpacity(0.08),
-            ),
-          ),
-
-          // Контент панели
-          Center(
-            child: ListView(
-              shrinkWrap: true,
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: [
-                _GeoDot(
-                  selected: currentIndex == 0,
-                  onTap: () => onSelect(0),
+            for (int i = 0; i < favoriteCities.length; i++)
+              if (geoLower == null ||
+                  favoriteCities[i].toLowerCase() != geoLower)
+                _CityDot(
+                  cityName: favoriteCities[i],
+                  selected: currentIndex == i + 1,
+                  onTap: () => onSelect(i + 1),
+                  onLongPress: () =>
+                      _showCityMenu(context, favoriteCities[i], i + 1),
                 ),
-
-                for (int i = 0; i < favoriteCities.length; i++)
-                  if (geoLower == null ||
-                      favoriteCities[i].toLowerCase() != geoLower)
-                    _CityDot(
-                      cityName: favoriteCities[i],
-                      selected: currentIndex == i + 1,
-                      onTap: () => onSelect(i + 1),
-                      onLongPress: () =>
-                          _showCityMenu(context, favoriteCities[i], i + 1),
-                    ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  ),
-);}
+    );
+  }
 
   Future<void> _showCityMenu(
       BuildContext context, String city, int index) async {
