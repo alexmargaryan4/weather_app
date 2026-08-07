@@ -41,8 +41,8 @@ class GlassPanel extends StatelessWidget {
       child: BackdropFilter(
 
         filter: ImageFilter.blur(
-          sigmaX: 22,
-          sigmaY: 22,
+          sigmaX: 4,
+          sigmaY: 4,
         ),
 
 
@@ -119,7 +119,7 @@ class GlassPanel extends StatelessWidget {
                         ),
 
 
-                    radius: 1.3,
+                    radius: 1.2,
 
 
                     colors: [
